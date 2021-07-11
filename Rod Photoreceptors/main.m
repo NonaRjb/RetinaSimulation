@@ -1,16 +1,16 @@
 clc
 %close all
-%clear variables
+clear variables
 
 
-tspan = [0, 100];
+tspan = [0, 1];
 Y0 = [-36.186, 0.430, 0.999, 0.436, 0.642, 0.646, 0.298, 0.0517,...
     0.00398, 0.000115, 0.0966, 0.0966, 80.929, 29.068, 80.929, 29.068, 0, 0, 0, 0, 0.3, 34.88, 2.0];
-jhvt = linspace(0,100,10000000);
-jhv = (10)*ones(size(jhvt));
+jhvt = linspace(0,1,100000);
+%jhv = (10)*ones(size(jhvt));
 %jhv(60000:end) = 0;
-%jhv = zeros(size(jhvt));
-%jhv(10000:10400) = 100;
+jhv = zeros(size(jhvt));
+jhv(10000:10400) = 100;
 tic
 [t, y] = ode15s(@(t, Y) odefuncs_rod(t, Y, jhvt, jhv), tspan, Y0);
 end_time = toc;
@@ -36,6 +36,19 @@ grid on
 grid minor
 
 figure
-plot(t, y(:, 11))
-grid on 
+plot(t,y(:, 1)); title('Membrane Potential'); xlabel('t [s]'); ylabel('V_m [mV]')
+grid on
 grid minor
+
+figure
+plot(t, y(:, 11))
+grid on
+grid minor
+
+% this is the "finite difference" derivative. Note it is  one element shorter than y and x
+yd = diff(y(:, 1))./diff(t);
+% this is to assign yd an abscissa midway between two subsequent x
+xd = (t(2:end)+t(1:(end-1)))/2;
+% this should be a rough plot of your derivative
+figure
+plot(xd,yd)

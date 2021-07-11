@@ -7,6 +7,7 @@ classdef RodPhotoReceptor < handle
         dt
         buffer_size
         flag
+        t_vec
         % constants
 		Cm = 0.02;      % [nF]
 		gKv = 2.0;      % [nS]
@@ -74,7 +75,8 @@ classdef RodPhotoReceptor < handle
             obj.dt = dt;
             obj.buffer_size = buffer_size;
             obj.flag = 0;
-                       
+            
+            obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(23, buffer_size);
 
 			% variables
@@ -87,7 +89,7 @@ classdef RodPhotoReceptor < handle
             end
 		end
         
-        function [y, c]  = solve(obj,jhv)
+        function [y, curr_t, c]  = solve(obj,jhv)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
 			
@@ -160,24 +162,45 @@ classdef RodPhotoReceptor < handle
             D(23) = obj.Amax/(1+(obj.Y(21, k)/obj.Kc)^4)-obj.Y(23, k)*...
                 (obj.Vbar+obj.sigma*obj.Y(20, k));
            
+            if abs(max(D, [], 'all')) > 300
+                obj.dt = 1e-07;
+            elseif abs(max(D, [], 'all')) <= 300 && abs(max(D, [], 'all')) > 200
+                obj.dt = 2*1e-07;
+            elseif abs(max(D, [], 'all')) <= 200 && abs(max(D, [], 'all')) > 100
+                obj.dt = 4*1e-06;
+            elseif abs(max(D, [], 'all')) <= 100 && abs(max(D, [], 'all')) > 10
+                obj.dt = 8*1e-06;
+            elseif abs(max(D, [], 'all')) <= 100 && abs(max(D, [], 'all')) > 10
+                obj.dt = 1e-05;
+            else
+                obj.dt = 2*1e-05;
+            end
+            
             % values of variables at the next time step
             
             % we have already reached maximum buffer size so we should discard
             % primary values of the variables
             if (obj.t+1 == obj.buffer_size) && (obj.flag == 1)
                 obj.Y = [obj.Y(:, 2:end), obj.Y(:, k)+obj.dt*D];
+                obj.t_vec = [obj.t_vec(2:end); obj.t_vec(end)+obj.dt];
                 y = obj.Y(:, end);
+                curr_t = obj.t_vec(end);
             % we have just reached maximum buffer size so e should change
             % flag value to 1
             elseif (obj.t+1 == obj.buffer_size) && (obj.flag == 0)
                 obj.Y(:, k+1) = obj.Y(:, k)+obj.dt*D;
+                obj.t_vec(k+1) = obj.t_vec(k)+obj.dt;
                 obj.flag = 1;
                 y = obj.Y(:, k+1);
+                curr_t = obj.t_vec(k+1);
             % we have not yet reached the buffer size
             else
                 obj.Y(:, k+1) = obj.Y(:, k)+obj.dt*D;
+                obj.t_vec(k+1) = obj.t_vec(k)+obj.dt;
                 y = obj.Y(:, k+1);
+                curr_t = obj.t_vec(k+1);
             end
+            
             
             c = [am_Kv, bm_Kv, ah_Kv, bh_Kv, iKv, Eca, am_Ca, bm_Ca, hCa, iCa,...
                 mCl_Ca, iCl, am_KCa, bm_KCa, mKCas, iKCa, ah, bh, ih, iL, ...
@@ -197,6 +220,9 @@ classdef RodPhotoReceptor < handle
             cas = obj.Y(11, :);
         end
         
+        function tVector = get_tvec(obj)
+            tVector = obj.t_vec;
+        end
     end
 end
 
