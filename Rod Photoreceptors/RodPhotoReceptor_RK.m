@@ -1,4 +1,4 @@
-classdef RodPhotoReceptor < handle
+classdef RodPhotoReceptor_RK < handle
     %UNTITLED Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -61,7 +61,7 @@ classdef RodPhotoReceptor < handle
     end
     
     methods
-        function obj = RodPhotoReceptor(Y0, buffer_size, dt)
+        function obj = RodPhotoReceptor_RK(Y0, buffer_size, dt)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
@@ -127,41 +127,19 @@ classdef RodPhotoReceptor < handle
 			j = obj.jmax*(obj.Y(23, k))^3/(obj.Y(23, k)^3+10^3);
 			iPhoto = -j*(1.0-exp((obj.Y(1, k)-8.5)/17.0));
 			
+            consts = [obj.Cm; obj.F; obj.V1; obj.V2; obj.DCa; obj.S1;... 
+                obj.delta; obj.Lb1; obj.Lb2; obj.Hb1; obj.Hb2; obj.BL;...
+                obj.BH; obj.a1; obj.a2; obj.a3; obj.e; obj.Ttot; ...
+                obj.b1; obj.tau1; obj.tau2; obj.PDEtot; obj.b; obj.gammaCa;...
+                obj.Ca0p; obj.k1; obj.k2; obj.eT; obj.Amax; obj.Kc;...
+                obj.Vbar; obj.sigma];
             
-            D = zeros(23, 1);
-            D(1) = 1/obj.Cm*-(iKv+iCa+iCl+iKCa+ih+iL+iPhoto+iex+iex2);
-            D(2) = am_Kv*(1-obj.Y(2, k))-bm_Kv*obj.Y(2, k);
-            D(3) = ah_Kv*(1-obj.Y(3, k))-bh_Kv*obj.Y(3, k);
-            D(4) = am_Ca*(1-obj.Y(4, k))-bm_Ca*obj.Y(4, k);
-            D(5) = am_KCa*(1-obj.Y(5, k))-bm_KCa*obj.Y(5, k);
-            D(6) = -4*ah*obj.Y(6, k)+bh*obj.Y(7, k);
-            D(7) = 4*ah*obj.Y(6, k)-3*(ah+bh)*obj.Y(7, k)+2*bh*obj.Y(8, k);
-            D(8) = 3*ah*obj.Y(7, k)-(2*ah+2*bh)*obj.Y(8, k)+3*bh*obj.Y(9, k);
-            D(9) = 2*ah*obj.Y(8, k)-(ah+3*bh)*obj.Y(9, k)+4*bh*obj.Y(10, k);
-            D(10) = ah*obj.Y(9, k)-4*bh*obj.Y(10, k);
-            D(11) = -(iCa+iex+iex2)/(2*obj.F*obj.V1)*10^(-6)...
-                -obj.DCa*obj.S1/(obj.delta*obj.V1)*(obj.Y(11, k)-obj.Y(12, k))...
-                -obj.Lb1*obj.Y(11, k)*(obj.BL-obj.Y(13, k))+obj.Lb2*obj.Y(13, k)...
-                -obj.Hb1*obj.Y(11, k)*(obj.BH-obj.Y(14, k))+obj.Hb2*obj.Y(14, k);
-            D(12) = obj.DCa*obj.S1/(obj.delta*obj.V2)*(obj.Y(11, k)-...
-                obj.Y(12, k))-obj.Lb1*obj.Y(12, k)*(obj.BL-obj.Y(15, k))+...
-                obj.Lb2*obj.Y(15, k)-obj.Hb1*obj.Y(12, k)*(obj.BH-obj.Y(16, k))...
-                +obj.Hb2*obj.Y(16, k);
-            D(13) = obj.Lb1*obj.Y(11, k)*(obj.BL-obj.Y(13, k))-obj.Lb2*obj.Y(13, k);
-            D(14) = obj.Hb1*obj.Y(11, k)*(obj.BH-obj.Y(14, k))-obj.Hb2*obj.Y(14, k);
-            D(15) = obj.Lb1*obj.Y(12, k)*(obj.BL-obj.Y(15, k))-obj.Lb2*obj.Y(15, k);
-            D(16) = obj.Hb1*obj.Y(12, k)*(obj.BH-obj.Y(16, k))-obj.Hb2*obj.Y(16, k);
-            D(17) = jhv-obj.a1*obj.Y(17, k)+obj.a2*obj.Y(18, k);
-            D(18) = obj.a1*obj.Y(17, k)-(obj.a2+obj.a3)*obj.Y(18, k);
-            D(19) = obj.e*obj.Y(17, k)*(obj.Ttot-obj.Y(19, k))-obj.b1*obj.Y(19, k)...
-                -obj.tau1*obj.Y(19, k)*(obj.PDEtot-obj.Y(20, k))+obj.tau2*obj.Y(20, k);
-            D(20) = obj.tau1*obj.Y(19, k)*(obj.PDEtot-obj.Y(20, k))-obj.tau2*obj.Y(20, k);
-            D(21) = obj.b*j-obj.gammaCa*(obj.Y(21, k)-obj.Ca0p)...
-                -obj.k1*(obj.eT-obj.Y(22, k))*obj.Y(21, k)+obj.k2*obj.Y(22, k);
-            D(22) = obj.k1*(obj.eT-obj.Y(22, k))*obj.Y(21, k)-obj.k2*obj.Y(22, k);
-            D(23) = obj.Amax/(1+(obj.Y(21, k)/obj.Kc)^4)-obj.Y(23, k)*...
-                (obj.Vbar+obj.sigma*obj.Y(20, k));
-           
+            vars = [iKv; iCa; iCl; iKCa; ih; iL; iPhoto; iex; iex2;...
+                am_Kv; bm_Kv; ah_Kv; bh_Kv; am_Ca; bm_Ca; am_KCa;...
+                bm_KCa; ah; bh; jhv; j];
+            
+            D = f(obj.Y(:,k), vars, consts);
+            
             if abs(max(D, [], 'all')) > 300
                 obj.dt = 1e-06;
             elseif abs(max(D, [], 'all')) <= 300 && abs(max(D, [], 'all')) > 200
@@ -175,27 +153,32 @@ classdef RodPhotoReceptor < handle
             else
                 obj.dt = 1e-04;
             end
-            
+                        
+            k1 = obj.dt * D;
+            k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
+            k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
+            k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
+            k_tot = 1/6*(k1+2*k2+2*k3+k4);
             % values of variables at the next time step
             
             % we have already reached maximum buffer size so we should discard
             % primary values of the variables
             if (obj.t+1 == obj.buffer_size) && (obj.flag == 1)
-                obj.Y = [obj.Y(:, 2:end), obj.Y(:, k)+obj.dt*D];
+                obj.Y = [obj.Y(:, 2:end), obj.Y(:, k)+k_tot];
                 obj.t_vec = [obj.t_vec(2:end); obj.t_vec(end)+obj.dt];
                 y = obj.Y(:, end);
                 curr_t = obj.t_vec(end);
             % we have just reached maximum buffer size so e should change
             % flag value to 1
             elseif (obj.t+1 == obj.buffer_size) && (obj.flag == 0)
-                obj.Y(:, k+1) = obj.Y(:, k)+obj.dt*D;
+                obj.Y(:, k+1) = obj.Y(:, k)+k_tot;
                 obj.t_vec(k+1) = obj.t_vec(k)+obj.dt;
                 obj.flag = 1;
                 y = obj.Y(:, k+1);
                 curr_t = obj.t_vec(k+1);
             % we have not yet reached the buffer size
             else
-                obj.Y(:, k+1) = obj.Y(:, k)+obj.dt*D;
+                obj.Y(:, k+1) = obj.Y(:, k)+k_tot;
                 obj.t_vec(k+1) = obj.t_vec(k)+obj.dt;
                 y = obj.Y(:, k+1);
                 curr_t = obj.t_vec(k+1);
@@ -264,3 +247,92 @@ bh = 18/exp(-(V+8)/19+1);
 
 end
 
+%%%% F %%%%
+function D = f(Y, vars, consts)
+
+% consts
+Cm = consts(1);
+F = consts(2);
+V1 = consts(3);
+V2 = consts(4);
+DCa = consts(5);
+S1 = consts(6);
+delta = consts(7);
+Lb1 = consts(8);
+Lb2 = consts(9);
+Hb1 = consts(10);
+Hb2 = consts(11);
+BL = consts(12);
+BH = consts(13);
+a1 = consts(14);
+a2 = consts(15);
+a3 = consts(16);
+e = consts(17);
+Ttot = consts(18);
+b1 = consts(19);
+tau1 = consts(20);
+tau2 = consts(21);
+PDEtot = consts(22);
+b = consts(23);
+gammaCa = consts(24);
+Ca0p = consts(25);
+k1 = consts(26);
+k2 = consts(27);
+eT = consts(28);
+Amax = consts(29);
+Kc = consts(30);
+Vbar = consts(31);
+sigma = consts(32);
+
+% vars
+iKv = vars(1);
+iCa = vars(2);
+iCl = vars(3);
+iKCa = vars(4);
+ih = vars(5);
+iL = vars(6);
+iPhoto = vars(7);
+iex = vars(8);
+iex2 = vars(9);
+am_Kv = vars(10);
+bm_Kv = vars(11);
+ah_Kv = vars(12);
+bh_Kv = vars(13);
+am_Ca = vars(14);
+bm_Ca = vars(15);
+am_KCa = vars(16);
+bm_KCa = vars(17);
+ah = vars(18);
+bh = vars(19);
+jhv = vars(20);
+j = vars(21);
+
+
+D = zeros(23, 1);
+D(1) = 1/Cm*-(iKv+iCa+iCl+iKCa+ih+iL+iPhoto+iex+iex2);
+D(2) = am_Kv*(1-Y(2))-bm_Kv*Y(2);
+D(3) = ah_Kv*(1-Y(3))-bh_Kv*Y(3);
+D(4) = am_Ca*(1-Y(4))-bm_Ca*Y(4);
+D(5) = am_KCa*(1-Y(5))-bm_KCa*Y(5);
+D(6) = -4*ah*Y(6)+bh*Y(7);
+D(7) = 4*ah*Y(6)-3*(ah+bh)*Y(7)+2*bh*Y(8);
+D(8) = 3*ah*Y(7)-(2*ah+2*bh)*Y(8)+3*bh*Y(9);
+D(9) = 2*ah*Y(8)-(ah+3*bh)*Y(9)+4*bh*Y(10);
+D(10) = ah*Y(9)-4*bh*Y(10);
+D(11) = -(iCa+iex+iex2)/(2*F*V1)*10^(-6)-DCa*S1/(delta*V1)*(Y(11)-Y(12))...
+    -Lb1*Y(11)*(BL-Y(13))+Lb2*Y(13)-Hb1*Y(11)*(BH-Y(14))+Hb2*Y(14);
+D(12) = DCa*S1/(delta*V2)*(Y(11)-Y(12))-Lb1*Y(12)*(BL-Y(15))+...
+    Lb2*Y(15)-Hb1*Y(12)*(BH-Y(16))+Hb2*Y(16);
+D(13) = Lb1*Y(11)*(BL-Y(13))-Lb2*Y(13);
+D(14) = Hb1*Y(11)*(BH-Y(14))-Hb2*Y(14);
+D(15) = Lb1*Y(12)*(BL-Y(15))-Lb2*Y(15);
+D(16) = Hb1*Y(12)*(BH-Y(16))-Hb2*Y(16);
+D(17) = jhv-a1*Y(17)+a2*Y(18);
+D(18) = a1*Y(17)-(a2+a3)*Y(18);
+D(19) = e*Y(17)*(Ttot-Y(19))-b1*Y(19)-tau1*Y(19)*(PDEtot-Y(20))+tau2*Y(20);
+D(20) = tau1*Y(19)*(PDEtot-Y(20))-tau2*Y(20);
+D(21) = b*j-gammaCa*(Y(21)-Ca0p)-k1*(eT-Y(22))*Y(21)+k2*Y(22);
+D(22) = k1*(eT-Y(22))*Y(21)-k2*Y(22);
+D(23) = Amax/(1+(Y(21)/Kc)^4)-Y(23)*(Vbar+sigma*Y(20));
+
+end

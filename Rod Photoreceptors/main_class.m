@@ -7,15 +7,16 @@ Y0 = [-36.186, 0.430, 0.999, 0.436, 0.642, 0.646, 0.298, 0.0517, 0.00398, ...
     0.000115, 0.0966, 0.0966, 80.929, 29.068, 80.929, 29.068, 0, 0, 0, 0, ...
     0.3, 34.88, 2.0];
 
-buffer_size = 100000;
+buffer_size = 1000000;
 t_start = 0;
-t_end = 1;
-rod = RodPhotoReceptor(Y0, buffer_size);
-jhvt = linspace(0,t_end,100000);
+t_end = 10;
+rod = RodPhotoReceptor_RK(Y0, buffer_size);
+jhvt = linspace(0,t_end,1000000);
 %jhv = (10)*ones(size(jhvt));
-%jhv(10000:end) = 0;
+%jhv = zeros(size(jhvt));
+%jhv(10000:end) = 10;
 jhv = zeros(size(jhvt));
-jhv(10000:10400) = 100;
+jhv(100000:102000) = 100;
 
 %iPhoto = zeros(size(jhvt))';
 curr_t = t_start;
@@ -42,10 +43,10 @@ xlim([t_vec(1), t_vec(t_vec_end)])
 grid on
 grid minor
 
-cas = rod.get_Cas();
-figure 
-plot(t_vec(1:t_vec_end), cas(1:t_vec_end));  title('[Ca_s]'); xlabel('t [s]'); ylabel('[Ca_s] [uM]')
-xlim([t_vec(1), t_vec(t_vec_end)])
-grid on
-grid minor
+% cas = rod.get_Cas();
+% figure 
+% plot(t_vec(1:t_vec_end), cas(1:t_vec_end));  title('[Ca_s]'); xlabel('t [s]'); ylabel('[Ca_s] [uM]')
+% xlim([t_vec(1), t_vec(t_vec_end)])
+% grid on
+% grid minor
 
