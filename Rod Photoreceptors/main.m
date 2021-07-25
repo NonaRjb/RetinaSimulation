@@ -9,11 +9,18 @@ tspan_fix = tspan(1):tstep:tspan(2);
 Y0 = [-36.186, 0.430, 0.999, 0.436, 0.642, 0.646, 0.298, 0.0517,...
     0.00398, 0.000115, 0.0966, 0.0966, 80.929, 29.068, 80.929, 29.068, 0, 0, 0, 0, 0.3, 34.88, 2.0];
 jhvt = linspace(0,10,1000000);
-%jhv = (10)*ones(size(jhvt));
+
+%%% input sample #1
+jhv = (10)*ones(size(jhvt));
+
+%%% input sample #2
 %jhv = zeros(size(jhvt));
 %jhv(10000:end) = 10;
-jhv = zeros(size(jhvt));
-jhv(100000:102000) = 100;
+
+%%% input sample #3
+%jhv = zeros(size(jhvt));
+%jhv(100000:102000) = 100;
+
 tic
 [t, y] = ode15s(@(t, Y) odefuncs_rod(t, Y, jhvt, jhv), tspan, Y0);
 end_time = toc;

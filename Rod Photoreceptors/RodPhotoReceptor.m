@@ -161,6 +161,8 @@ classdef RodPhotoReceptor < handle
             D(22) = obj.k1*(obj.eT-obj.Y(22, k))*obj.Y(21, k)-obj.k2*obj.Y(22, k);
             D(23) = obj.Amax/(1+(obj.Y(21, k)/obj.Kc)^4)-obj.Y(23, k)*...
                 (obj.Vbar+obj.sigma*obj.Y(20, k));
+            
+            %%%% specify dt %%%%
            
             if abs(max(D, [], 'all')) > 300
                 obj.dt = 1e-06;
@@ -175,6 +177,13 @@ classdef RodPhotoReceptor < handle
             else
                 obj.dt = 1e-04;
             end
+            
+%             maxD = abs(max(D, [], 'all'));
+%             if maxD > 1e-03
+%                 obj.dt = 1/maxD*1e-03;
+%             else
+%                 obj.dt = 0.1;
+%             end
             
             % values of variables at the next time step
             
