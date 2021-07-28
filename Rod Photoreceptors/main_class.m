@@ -3,18 +3,24 @@ clear variables
 %close all
 
 
-Y0 = [-36.186, 0.430, 0.999, 0.436, 0.642, 0.646, 0.298, 0.0517, 0.00398, ...
+rod0 = [-36.186, 0.430, 0.999, 0.436, 0.642, 0.646, 0.298, 0.0517, 0.00398, ...
     0.000115, 0.0966, 0.0966, 80.929, 29.068, 80.929, 29.068, 0, 0, 0, 0, ...
     0.3, 34.88, 2.0];
 
-% Y0 = [-36.186, 0.999, 0.436, 0.646, 0.298, 0.0517, 0.00398, ...
+% rod0 = [-36.186, 0.999, 0.436, 0.646, 0.298, 0.0517, 0.00398, ...
 %     0.000115, 0.0966, 0.0966, 80.929, 29.068, 80.929, 29.068, 0, 0, 0, 0, ...
 %     0.3, 34.88, 2.0];
+
+
+%%%
+% bip0 = [-36.186, 0.430, 0.999, 0, 0, 0.646, 0.298, 0.0517, 0.00398,...
+%     0.000115, 0.436, 0.642, 0.0966, 0, 80.929, 29.068, 0, 0, 0];
 
 buffer_size = 100000; % if set to 1000000 the result will be accurate but needs more time
 t_start = 0;
 t_end = 1;
-rod = RodPhotoReceptor_RK(Y0, buffer_size);
+rod = RodPhotoReceptor_RK(rod0, buffer_size);
+%bip = Bipolar_complete(bip0, buffer_size);
 jhvt = linspace(0,t_end,buffer_size);
 
 %%% input sample #1
@@ -29,16 +35,18 @@ jhv = (10)*ones(size(jhvt));
 % jhv(100000:102000) = 100;
 
 %iPhoto = zeros(size(jhvt))';
-curr_t = t_start;
+curr_t_rod = t_start;
 %ab = zeros(10, buffer_size);
 %i = 1;
 %maxD = [];
 
 tic
-while curr_t < t_end && jhvt(end)>=curr_t
-    input_j = interp1(jhvt, jhv, curr_t);
-    [y, curr_t, c] = rod.solve(input_j);
+while curr_t_rod < t_end && jhvt(end)>=curr_t_rod
+    input_j = interp1(jhvt, jhv, curr_t_rod);
+    [y_rod, curr_t_rod, c_rod] = rod.solve(input_j);
     rod.update_time();
+%     [y_bip, curr_t_bip, c_bip] = bip.solve(y_rod(1));
+%     bip.update_time();
     %maxD = [maxD, objdt];
     %iPhoto(i) = c(end);
     %ab(:, i) = c(10:19);
@@ -50,7 +58,7 @@ t_per_step = end_time/length(jhvt);
 tot_t = end_time;
 
 t_vec = rod.get_tvec();
-t_vec_end = find(t_vec == curr_t);
+t_vec_end = find(t_vec == curr_t_rod);
 
 v = rod.get_V();
 figure
