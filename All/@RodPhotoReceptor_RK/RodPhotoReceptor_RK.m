@@ -11,22 +11,22 @@ classdef RodPhotoReceptor_RK < handle
         % constants
 		Cm = 0.02;      % [nF]
 		gKv = 2.0;      % [nS]
-		Ek = -74;       % [mV]
+		Ek = -74.0;     % [mV]
 		gCa = 0.7;      % [nS]
 		Ca0 = 1600;     % [uM]
 		gClCa = 2.0;    % [nS]
-		Eclca = -20;    % [mV]
+		Eclca = -20.0;  % [mV]
 		gKCa = 5.0;     % [nS]
 		gh = 3.0;       % [nS]
-		Eh = -32;       % [mV]
+		Eh = -32.0;     % [mV]
 		gL = 0.35;      % [nS]
-		EL = -77;       % [mV]
-		F = 9.648*10^4;         % [cmol^(-1)] Faraday const.
+		EL = -77.0;     % [mV]
+		F = 9.64846*10^4;       % [cmol^(-1)] Faraday const.
 		V1 = 3.812*10^(-13);    % [dm^3] Volume of submembrane area
 		V2 = 5.236*10^(-13);    % [dm^3] Volume of deep intracellular area
 		DCa = 6*10^(-8);        % [d(m^2)(s^(-1))] Ca diffusion coefficient 
 		S1 = 3.142*10^(-8);     % [dm^2] Surface area of the submembrane and the deep intracellular area spherical boundary
-		delta = 5.9*10^(-5);    % [dm] Distance between submembrane area and the deep intracellular area
+		delta = 5*10^(-5);      % [dm] Distance between submembrane area and the deep intracellular area
 		Lb1 = 0.4;              % [s^(-1)uM^(-1)] On rate constant for the binding of Ca to low-affinity buffer
 		Lb2 = 0.2;              % [s^(-1)uM^(-1)] Off rate constant for the binding of Ca to low-affinity buffer
 		Hb1 = 100;              % [s^(-1)uM^(-1)]  On rate constant for the binding of Ca to high-affinity buffer
@@ -43,7 +43,7 @@ classdef RodPhotoReceptor_RK < handle
 		Ttot = 1000;            % [uM] Total transducin
 		b1 = 2.5;               % [s^(-1)] Rate constant of T* inactivation
 		tau1 = 0.2;             % [s^(-1)uM^(-1)] Rate constant of PDE activation
-		tau2 = 5;               % [s^(-1)] Rate constant of PDE inactivation
+		tau2 = 5.0;               % [s^(-1)] Rate constant of PDE inactivation
 		PDEtot = 100;           % [uM] Phosphodiasterase
 		gammaCa = 50;           % [s^(-1)] Rate constant of Ca2+ extrusion in the absence of Ca2+ buffers mediated by the Na+?Ca2+ exchanger
 		Ca0p = 0.1;             % [uM] Intracellular Ca2+ concentration at the steady state
@@ -123,7 +123,7 @@ classdef RodPhotoReceptor_RK < handle
 			iex = obj.jex*exp(-(obj.Y(1, k)+14)/70)*(obj.Y(11, k)-obj.Cae)/(obj.Y(11, k)-obj.Cae+2.3);
 			iex2 = obj.jex2*(obj.Y(11, k)-obj.Cae)/(obj.Y(11, k)-obj.Cae+0.5);
 			%%% photo %%%
-			j = obj.jmax*(obj.Y(23, k))^3/(obj.Y(23, k)^3+10^3);
+			j = obj.jmax*(obj.Y(23, k))^3/(obj.Y(23, k)^3+1000);
 			iPhoto = -j*(1.0-exp((obj.Y(1, k)-8.5)/17.0));
 			
             consts = [obj.Cm; obj.F; obj.V1; obj.V2; obj.DCa; obj.S1;... 
@@ -257,7 +257,7 @@ end
 function [ah, bh] = h(V)
 
 ah = 8/(exp((V+78)/14)+1);
-bh = 18/exp(-(V+8)/19+1);
+bh = 18/(exp(-(V+8)/19)+1);
 
 end
 %%%%%%%%%%%%%%%%
@@ -330,8 +330,8 @@ D(3) = ah_Kv*(1-Y(3))-bh_Kv*Y(3);
 D(4) = am_Ca*(1-Y(4))-bm_Ca*Y(4);
 D(5) = am_KCa*(1-Y(5))-bm_KCa*Y(5);
 D(6) = -4*ah*Y(6)+bh*Y(7);
-D(7) = 4*ah*Y(6)-3*(ah+bh)*Y(7)+2*bh*Y(8);
-D(8) = 3*ah*Y(7)-(2*ah+2*bh)*Y(8)+3*bh*Y(9);
+D(7) = 4*ah*Y(6)-(3*ah+bh)*Y(7)+2*bh*Y(8);
+D(8) = 3*ah*Y(7)-2*(ah+bh)*Y(8)+3*bh*Y(9);
 D(9) = 2*ah*Y(8)-(ah+3*bh)*Y(9)+4*bh*Y(10);
 D(10) = ah*Y(9)-4*bh*Y(10);
 D(11) = -(iCa+iex+iex2)/(2*F*V1)*10^(-6)-DCa*S1/(delta*V1)*(Y(11)-Y(12))...
@@ -348,7 +348,7 @@ D(19) = e*Y(17)*(Ttot-Y(19))-b1*Y(19)-tau1*Y(19)*(PDEtot-Y(20))+tau2*Y(20);
 D(20) = tau1*Y(19)*(PDEtot-Y(20))-tau2*Y(20);
 D(21) = b*j-gammaCa*(Y(21)-Ca0p)-k1*(eT-Y(22))*Y(21)+k2*Y(22);
 D(22) = k1*(eT-Y(22))*Y(21)-k2*Y(22);
-D(23) = Amax/(1+(Y(21)/Kc)^4)-Y(23)*(Vbar+sigma*Y(20));
+D(23) = Amax/(1.0+(Y(21)/Kc)^4)-Y(23)*(Vbar+sigma*Y(20));
 
 
 end
