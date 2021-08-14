@@ -315,7 +315,7 @@ S_inf = vars(24);
 Vpre = vars(25);
 
 
-D = zeros(18, 1);
+D = zeros(19, 1);
 D(1) = 1/C*-(iKv+iA+ih+iCa+iKCa+iL+Isyn);
 D(2) = am_Kv*(1.0-Y(2))-bm_Kv*Y(2);
 D(3) = ah_Kv*(1.0-Y(3))-bh_Kv*Y(3);
