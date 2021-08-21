@@ -1,4 +1,4 @@
-classdef Ganglion < handle
+classdef Amacrine < handle
     %UNTITLED Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -10,27 +10,18 @@ classdef Ganglion < handle
         t_vec
         % constants ganglion
         tscale = 1000; 
-		C = 1;      % [uF/cm^2]
-		gNa = 50;   % [mS/cm^2]
-		ENa = 35;   % [mV]
-		gA = 36;    % [mS/cm^2]
-		gCa = 2.2;  % [mS/cm^2]
-		gK = 12;    % [mS/cm^2]
-        EK = -75;   % [mV]
-		gKCa = 0.05;% [mS/cm^2]
-        gL = 0.05;  % [mS/cm^2]
-        El = -62.0; % [mV]
-		R = 8.31;
-        T = 293;
-        F = 96500;
-        Cae = 1800;
-        Cadiss = 1.0;
-        r = 12.5;
-        Cares = 0.1;
-        tCa = 50;
+		C = 20;     % [uF/cm^2]
+		gNa = 4;    % [mS/cm^2]
+		ENa = 40;   % [mV]
+		gK = 0.4;   % [mS/cm^2]
+        EK = -80;   % [mV]
+        gL = 0.46;  % [mS/cm^2]
+        El = -54.0; % [mV]
+        celcius_Na_A = 22;
+        celcius_K_A = 22;
 		% chemical synapse constants
-        gmax = 2.56;              % [nS] Maximum synapse conductance
-        Esyn = 0.0;               % [mV] Synapse's reversal potential
+        gmax = 1.2;               % [nS] Maximum synapse conductance
+        Esyn = -10.0;             % [mV] Synapse's reversal potential
         tau = 0.01;               % [ms] Time constant
         Vslope = 20;              % [mV] Voltage sensitivity of the synapse
         Vth = -36.424516776897130;% [mV]
@@ -39,7 +30,7 @@ classdef Ganglion < handle
     end
     
     methods
-        function obj = Ganglion(Y0, buffer_size, dt)
+        function obj = Amacrine(Y0, buffer_size, dt)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
@@ -55,7 +46,7 @@ classdef Ganglion < handle
             obj.flag = 0;
             
             obj.t_vec = zeros(buffer_size, 1); 
-            obj.Y = zeros(9, buffer_size);
+            obj.Y = zeros(5, buffer_size);
 
 			% variables
 			obj.Y(:, 1) = Y0;
@@ -67,7 +58,7 @@ classdef Ganglion < handle
             end
 		end
         
-        function [y, curr_t, c]  = solve(obj,Vpre)
+        function [y, curr_t, c]  = solve(obj, Vpre)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
 			
@@ -78,29 +69,18 @@ classdef Ganglion < handle
             end
 			% explicit functions
 			%%% Na %%%
-			am_Na = -0.6*(obj.Y(1, k)+30.0)/(exp(-0.1*(obj.Y(1, k)+30.0))-1.0);
-            bm_Na = 20.0*exp(-(obj.Y(1, k)+55.0)/18.0);
-            ah_Na = 0.4*exp(-(obj.Y(1, k)+50.0)/20.0);
-            bh_Na = 6.0/(exp(-0.1*(obj.Y(1, k)+20.0))+1.0);
+            [am_A, bm_A] = m(obj.Y(1, k), obj.celcius_Na_A);
+            [ah_A, bh_A] = h(obj.Y(1, k), obj.celcius_Na_A);
+			tau_m_Na = 1/(am_A+bm_A);
+            m_inf_Na = am_A/(am_A+bm_A);
+            tau_h_Na = 1/(ah_A/3.5+bh_A/3.5);
+            h_inf_Na = ah_A/(ah_A+bh_A);
             iNa = obj.gNa*obj.Y(2, k)^3*obj.Y(3, k)*(obj.Y(1, k)-obj.ENa);
-			%%% A %%%
-			am_A = (-0.006*(obj.Y(1, k)+90.0))/(exp(-0.1*(obj.Y(1, k)+90.0))-1.0);
-			bm_A = 0.1*exp(-(obj.Y(1, k)+30.0)/10.0);
-            ah_A = 0.04*exp(-(obj.Y(1, k)+70.0)/20.0);
-            bh_A = 0.6/(exp(-0.1*(obj.Y(1, k)+40.0))+1.0);
-            iA = obj.gA*obj.Y(7, k)^3*obj.Y(8, k)*(obj.Y(1, k)-obj.EK);
             %%% K %%%
-			an_K = (-0.02*(obj.Y(1, k)+40.0))/(exp(-0.1*(obj.Y(1, k)+40.0))-1.0);
-			bn_K = 0.4*exp(-(obj.Y(1, k)+50.0)/80.0);
-            iK = obj.gK*obj.Y(6, k)^4*(obj.Y(1, k)-obj.EK);
-            %%% Ca %%%
-			Eca = 1000.0*(obj.R*obj.T/(2*obj.F))*log(obj.Cae/obj.Y(5, k));
-			an_Ca = -0.3*(obj.Y(1, k)+13.0)/(exp(-0.1*(obj.Y(1, k)+13.0))-1.0);
-			bn_Ca = 10.0*exp(-(obj.Y(1, k)+38.0)/18.0);
-			iCa = obj.gCa*obj.Y(4, k)^3*(obj.Y(1, k)-Eca);
-			%%% K_Ca %%%
-            Caidiss2 = (obj.Y(5, k)/obj.Cadiss)^2;
-			iKCa = obj.gKCa*Caidiss2/(1.0+Caidiss2)*(obj.Y(1, k)-obj.EK);
+            [an_A, bn_A] = n(V, obj.celcius_K_A);
+            tau_n_K = 1/(an_A/5+bn_A/5);
+            n_inf_K = an_A/(an_A+bn_A);
+            iK = obj.gK*obj.Y(4, k)^4*(obj.Y(1, k)-obj.EK);
 			%%% L %%%
 			iL = obj.gL*(obj.Y(1, k)-obj.El);
             %%% Isyn %%%
@@ -110,14 +90,12 @@ classdef Ganglion < handle
 %                 S_inf = 0;
 %             end
             S_inf = tanh(abs(Vpre-obj.Vth)/obj.Vslope);
-            Isyn = obj.gmax*obj.Y(9, k)*(obj.Y(1, k)-obj.Esyn);
+            Isyn = obj.gmax*obj.Y(5, k)*(obj.Y(1, k)-obj.Esyn);
 			
-            consts = [obj.C; obj.F; obj.r; obj.Cares; obj.tCa; obj.tau;...
-                obj.Vth; obj.tscale];
+            consts = [obj.C; obj.tau; obj.Vth; obj.tscale];
             
-            vars = [iNa; iA; iK; iCa; iKCa; iL; am_Na; bm_Na; ah_Na; bh_Na;...
-                an_Ca; bn_Ca; an_K; bn_K; am_A; bm_A; ah_A; bh_A; Isyn;...
-                S_inf; Vpre];
+            vars = [iNa; iK; iL; tau_m_Na; m_inf_Na; tau_h_Na; ...
+                h_inf_Na; tau_n_K; n_inf_K; Isyn; S_inf; Vpre];
             
             D = f(obj.Y(:,k), vars, consts);
             
@@ -181,9 +159,8 @@ classdef Ganglion < handle
             end
             
             
-            c = [am_Na, bm_Na, ah_Na, bh_Na, iNa, am_A, bm_A, ah_A, ...
-                bh_A, iA, an_K, bn_K, iK, Eca, an_Ca, bn_Ca, iCa,...
-                Caidiss2, iKCa, iL, S_inf, Isyn];
+            c = [am_A, bm_A, ah_A, bh_A, iNa, an_A, bn_A, iK, ...
+                iL, S_inf, Isyn];
             
         end
         
@@ -198,65 +175,88 @@ classdef Ganglion < handle
         function tVector = get_tvec(obj)
             tVector = obj.t_vec;
         end
-        
-        function set_Vth(obj, vth)
-            obj.Vth = vth;
-        end
     end
 end
 
+%%%% Q10_A %%%%
+function fun = q10_A(temp)
+
+fun = 3.0 ^ ((temp-6.3)/10.0);
+
+end
+
+%%%% Expm1_A %%%%
+function fun = expm1_A(x, y)
+
+if abs(x/y) < 1e-06
+    fun = y*(1-x/(2*y));
+else
+    fun = x/(exp(x/y)-1);
+end
+
+end
+
+%%%% m_A %%%%
+function [am_A, bm_A] = m(V, temp_Na)
+
+V = -V-65;
+am_A = q10_A(temp_Na)*0.1*expm1_A((V+25),10);
+bm_A = q10_A(temp_Na)*4*exp(V/18);
+
+end
+
+%%%% h_A %%%%
+function [ah_A, bh_A] = h(V, temp_Na)
+
+V = -V-65;
+ah_A = q10_A(temp_Na)*0.07*exp(V/20);
+bh_A = q10_A(temp_Na)*1/(exp(0.1*V+3)+1);
+
+end
+
+%%%% n_A %%%%
+function [an_A, bn_A] = n(V, temp_K)
+
+V = -V-65;
+an_A = q10_A(temp_K)*0.01*expm1_A(V+10,10);
+bn_A = q10_A(temp_K)*0.125*exp(V/80);
+
+end
 
 %%%% F %%%%
 function D = f(Y, vars, consts)
 
 % consts
 C = consts(1);
-F = consts(2);
-r = consts(3);
-Cares = consts(4);
-tCa = consts(5);
-tau = consts(6);
-Vth = consts(7);
-tscale = consts(8);
+tau = consts(2);
+Vth = consts(3);
+tscale = consts(4);
 
 % vars
 iNa = vars(1);
-iA = vars(2);
-iK = vars(3);
-iCa = vars(4);
-iKCa = vars(5);
-iL = vars(6);
-am_Na = vars(7);
-bm_Na = vars(8);
-ah_Na = vars(9);
-bh_Na = vars(10);
-an_Ca = vars(11);
-bn_Ca = vars(12);
-an_K = vars(13);
-bn_K = vars(14);
-am_A = vars(15);
-bm_A = vars(16);
-ah_A = vars(17);
-bh_A = vars(18);
-Isyn = vars(19);
-S_inf = vars(20);
-Vpre = vars(21);
+iK = vars(2);
+iL = vars(3);
+tau_m_Na = vars(4);
+m_inf_Na = vars(5);
+tau_h_Na = vars(6);
+h_inf_Na = vars(7);
+tau_n_K = vars(8);
+n_inf_K = vars(9);
+Isyn = vars(10);
+S_inf = vars(11);
+Vpre = vars(12);
 
-D = zeros(9, 1);
+D = zeros(5, 1);
 D(1) = ((-(iNa+iA+iK+iCa+iKCa+iL)*20-Isyn)/(20*C))*tscale;
-D(2) = (am_Na*(1.0-Y(2))-bm_Na*Y(2))*tscale;
-D(3) = (ah_Na*(1.0-Y(3))-bh_Na*Y(3))*tscale;
-D(4) = (an_Ca*(1.0-Y(4))-bn_Ca*Y(4))*tscale;
-D(5) = (-(((10^4)*3.0*iCa)/(2.0*F*r))-((Y(5)-Cares)/tCa))*tscale;
-D(6) = (an_K*(1.0-Y(6))-bn_K*Y(6))*tscale;
-D(7) = (am_A*(1.0-Y(7))-bm_A*Y(7))*tscale;
-D(8) = (ah_A*(1.0-Y(8))-bh_A*Y(8))*tscale;
-if Vpre <= Vth
-    D(9) = 0;
+D(2) = (m_inf_Na-Y(2))/tau_m_Na*tscale;
+D(3) = (h_inf_Na-Y(3))/tau_h_Na*tscale;
+D(4) = (n_inf_K-Y(4))/tau_n_K*tscale;
+if Vpre < Vth
+    D(5) = 0;
 elseif abs(Vpre-Vth)>= 0
-    D(9) = (S_inf-Y(9))/((1-S_inf)*tau);
+    D(5) = (S_inf-Y(9))/((1-S_inf)*tau);
 else
-    D(9) = 0;
+    D(5) = 0;
 end
 
 

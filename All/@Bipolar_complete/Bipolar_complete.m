@@ -210,6 +210,10 @@ classdef Bipolar_complete < handle
         function tVector = get_tvec(obj)
             tVector = obj.t_vec;
         end
+        
+        function set_Vth(obj, vth)
+            obj.Vth = vth;
+        end
     end
 end
 
