@@ -51,6 +51,8 @@ jhvt = linspace(0,t_end,buffer_size);
 %%% input sample #3
 jhv = zeros(size(jhvt));
 jhv(100000:102000) = 100;
+%f0 = 0.1;
+%jhv = sin(2*pi*f0*jhvt);
 
 %iPhoto = zeros(size(jhvt))';
 curr_t_rod = t_start;
