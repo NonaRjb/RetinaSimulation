@@ -8,6 +8,7 @@ classdef RodPhotoReceptor_reduced < handle
         buffer_size
         flag
         t_vec
+        method
         % constants
 		Cm = 0.02;      % [nF]
 		gKv = 2.0;      % [nS]
@@ -61,20 +62,25 @@ classdef RodPhotoReceptor_reduced < handle
     end
     
     methods
-        function obj = RodPhotoReceptor_reduced(Y0, buffer_size, dt)
+        function obj = RodPhotoReceptor_reduced(Y0, buffer_size, dt, method)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
                 buffer_size = 10000;
                 dt = 1e-06;
+                method = 'euler';
             elseif nargin == 2
                 dt = 1e-06;
+                method = 'euler';
+            elseif nargin == 3
+                method = 'euler';
             end
             
             obj.t = 1;
             obj.dt = dt;
             obj.buffer_size = buffer_size;
             obj.flag = 0;
+            obj.method = method;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(21, buffer_size);
@@ -163,14 +169,19 @@ classdef RodPhotoReceptor_reduced < handle
 %                 obj.dt = 0.1;
 %             end
             %objdt = obj.dt;
+            if strcmp(obj.method, 'rk4')
             %%%%% runge-kutta 4
-%             k1 = obj.dt * D;
-%             k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
-%             k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
-%             k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
-%             k_tot = 1/6*(k1+2*k2+2*k3+k4);
+                k1 = obj.dt * D;
+                k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
+                k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
+                k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
+                k_tot = 1/6*(k1+2*k2+2*k3+k4);
+            elseif strcmp(obj.method, 'euler')
             %%%%% forward euler
-            k_tot = obj.dt*D;
+                k_tot = obj.dt*D;
+            else
+                k_tot = obj.dt*D;
+            end
             
             
             % values of variables at the next time step

@@ -15,6 +15,9 @@ rod0 = [-36.185963, 0.43018469, 0.99927789, 0.43647161, 0.64228624,...
 %     0.096557982, 0.096558392, 80.92926, 29.067444, 80.929703, 29.067556,...
 %     0.0, 0.0, 0.0, 0.0, 0.300000000000037, 34.883720929940061, 2.000000000017296];
 
+%%% Horizontal Cell initial values %%%
+% [h_V, h_mA, h_hA, h_mKv, h_mCa, h_mNa, h_hNa, h_B, h_Ca, h_Gaba]
+h0 = [-60, 0.03, 0.998, 0.139, 0.059, 0.026, 0.922, 0, 0, 0];
 
 %%% Rod Bipolar intitial values %%%
 % [bp_V, bp_mKv, bp_hKv, bp_mA, bp_hA, bp_C1, bp_C2, bp_O1, bp_O2, bp_O3,
@@ -36,10 +39,10 @@ t_start = 0;
 t_end = 10;
 dt = 2*1e-05;
 eps = dt;
-method = 'rk4';
-rod = RodPhotoReceptor_RK(rod0, buffer_size, dt, method);
-bip = Bipolar_complete(bip0, buffer_size, dt, method);
-rgc = Ganglion(rgc0, buffer_size, dt, method);
+rod = RodPhotoReceptor_RK(rod0, buffer_size, dt);
+h = Horizontal(h0, buffer_size, dt);
+bip = Bipolar_complete(bip0, buffer_size, dt);
+rgc = Ganglion(rgc0, buffer_size, dt);
 jhvt = linspace(0,t_end,buffer_size);
 
 %%% input sample #1
@@ -58,8 +61,10 @@ jhv(100000:102000) = 100;
 %iPhoto = zeros(size(jhvt))';
 curr_t_rod = t_start;
 %ab = zeros(10, buffer_size);
-%i = 1;
+i = 1;
 %maxD = [];
+glu = zeros(buffer_size, 1);
+iGlu = zeros(buffer_size, 1);
 
 tic
 while abs(curr_t_rod - t_end) > eps
@@ -68,10 +73,15 @@ while abs(curr_t_rod - t_end) > eps
     input_j = jhv(round(1+buffer_size/(t_end-t_start)*curr_t_rod));
     [y_rod, curr_t_rod, c_rod] = rod.solve(input_j);
     rod.update_time();
-    [y_bip, ~, ~] = bip.solve(y_rod(1));
-    bip.update_time();
-    [y_rgc, ~, ~] = rgc.solve(y_bip(1));
-    rgc.update_time();
+    [y_h, ~, c_h] = h.solve(y_rod(1));
+    h.update_time();
+    glu(i) = c_h(8);
+    iGlu(i) = c_h(6);
+    i = i + 1;
+%     [y_bip, ~, ~] = bip.solve(y_rod(1));
+%     bip.update_time();
+%     [y_rgc, ~, ~] = rgc.solve(y_bip(1));
+%     rgc.update_time();
     %maxD = [maxD, objdt];
     %iPhoto(i) = c_rod(end);
     %ab(:, i) = c(10:19);
@@ -86,10 +96,12 @@ t_vec = rod.get_tvec();
 t_vec_end = find(t_vec == curr_t_rod);
 
 v_rod = rod.get_V();
-v_bip = bip.get_V();
-s_bip = bip.get_S();
-v_rgc = rgc.get_V();
-s_rgc = rgc.get_S();
+% v_bip = bip.get_V();
+% s_bip = bip.get_S();
+% v_rgc = rgc.get_V();
+% s_rgc = rgc.get_S();
+v_h = h.get_V();
+gaba = h.get_gaba();
 
 
 figure
@@ -104,22 +116,42 @@ xlim([t_vec(1), t_vec(t_vec_end)])
 grid on
 grid minor
 subplot(3,2,3)
-plot(t_vec(1:t_vec_end), s_bip(1:t_vec_end)); title('Synaptic Value'); xlabel('t [s]'); ylabel('S(t) [mV]')
+plot(t_vec(1:t_vec_end), v_h(1:t_vec_end)); title('Horizontal Cell Membrane Potential'); xlabel('t [s]'); ylabel('GABA(t) [uM]')
 xlim([t_vec(1), t_vec(t_vec_end)])
 grid on
 grid minor
 subplot(3,2,4)
-plot(t_vec(1:t_vec_end), v_bip(1:t_vec_end)); title('RBP Membrane Potential'); xlabel('t [s]'); ylabel('V_m [mV]')
+plot(t_vec(1:t_vec_end), gaba(1:t_vec_end)); title('GABA Concentration'); xlabel('t [s]'); ylabel('GABA(t) [uM]')
 xlim([t_vec(1), t_vec(t_vec_end)])
 grid on
 grid minor
 subplot(3,2,5)
-plot(t_vec(1:t_vec_end), s_rgc(1:t_vec_end)); title('Synaptic Value'); xlabel('t [s]'); ylabel('S(t) [mV]')
+plot(t_vec(1:t_vec_end), glu(1:t_vec_end)); title('Glutamate Concentration'); xlabel('t [s]'); ylabel('Glu(t) [uM]')
 xlim([t_vec(1), t_vec(t_vec_end)])
 grid on
 grid minor
 subplot(3,2,6)
-plot(t_vec(1:t_vec_end), v_rgc(1:t_vec_end)); title('RGC Membrane Potential'); xlabel('t [s]'); ylabel('V_m [mV]')
+plot(t_vec(1:t_vec_end), iGlu(1:t_vec_end)); title('Glutamate Current'); xlabel('t [s]'); ylabel('iGlu(t) [pA]')
 xlim([t_vec(1), t_vec(t_vec_end)])
 grid on
 grid minor
+% subplot(3,2,3)
+% plot(t_vec(1:t_vec_end), s_bip(1:t_vec_end)); title('Synaptic Value'); xlabel('t [s]'); ylabel('S(t) [mV]')
+% xlim([t_vec(1), t_vec(t_vec_end)])
+% grid on
+% grid minor
+% subplot(3,2,4)
+% plot(t_vec(1:t_vec_end), v_bip(1:t_vec_end)); title('RBP Membrane Potential'); xlabel('t [s]'); ylabel('V_m [mV]')
+% xlim([t_vec(1), t_vec(t_vec_end)])
+% grid on
+% grid minor
+% subplot(3,2,5)
+% plot(t_vec(1:t_vec_end), s_rgc(1:t_vec_end)); title('Synaptic Value'); xlabel('t [s]'); ylabel('S(t) [mV]')
+% xlim([t_vec(1), t_vec(t_vec_end)])
+% grid on
+% grid minor
+% subplot(3,2,6)
+% plot(t_vec(1:t_vec_end), v_rgc(1:t_vec_end)); title('RGC Membrane Potential'); xlabel('t [s]'); ylabel('V_m [mV]')
+% xlim([t_vec(1), t_vec(t_vec_end)])
+% grid on
+% grid minor

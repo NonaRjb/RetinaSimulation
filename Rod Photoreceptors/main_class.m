@@ -1,80 +1,97 @@
 clc
 clear variables
-%close all
+close all
 
 
-rod0 = [-36.186, 0.430, 0.999, 0.436, 0.642, 0.646, 0.298, 0.0517, 0.00398, ...
-    0.000115, 0.0966, 0.0966, 80.929, 29.068, 80.929, 29.068, 0, 0, 0, 0, ...
-    0.3, 34.88, 2.0];
+%%% Rod initial values (complete) %%%
+rod0 = [-36.185963, 0.43018469, 0.99927789, 0.43647161, 0.64228624,...
+    0.64582664, 0.29823381, 0.051645089, 0.0039748312, 0.00011472013,...
+    0.096557982, 0.096558392, 80.92926, 29.067444, 80.929703, 29.067556,...
+    0.0, 0.0, 0.0, 0.0, 0.300000000000037, 34.883720929940061, 2.000000000017296];
 
-% rod0 = [-36.186, 0.999, 0.436, 0.646, 0.298, 0.0517, 0.00398, ...
-%     0.000115, 0.0966, 0.0966, 80.929, 29.068, 80.929, 29.068, 0, 0, 0, 0, ...
-%     0.3, 34.88, 2.0];
+%%% Rod initial values (reduced)
+% rod0 = [-36.185963, 0.99927789, 0.43647161, 0.64228624,...
+%     0.29823381, 0.051645089, 0.0039748312, 0.00011472013,...
+%     0.096557982, 0.096558392, 80.92926, 29.067444, 80.929703, 29.067556,...
+%     0.0, 0.0, 0.0, 0.0, 0.300000000000037, 34.883720929940061, 2.000000000017296];
 
-
-%%%
-% bip0 = [-36.186, 0.430, 0.999, 0, 0, 0.646, 0.298, 0.0517, 0.00398,...
-%     0.000115, 0.436, 0.642, 0.0966, 0, 80.929, 29.068, 0, 0, 0];
-
-buffer_size = 2; % if set to 1000000 the result will be accurate but needs more time
-t_start = 0;
-t_end = 10;
-rod = RodPhotoReceptor_RK(rod0, buffer_size);
-%bip = Bipolar_complete(bip0, buffer_size);
-jhvt = linspace(0,t_end,1000000);
-
-%%% input sample #1
-%jhv = (10)*ones(size(jhvt));
-
-%%% input sample #2
-%jhv = zeros(size(jhvt));
-%jhv(10000:end) = 10;
-
-%%% input sample #3
-jhv = zeros(size(jhvt));
-jhv(100000:102000) = 100;
+test_num = input('please enter the test number: ');
+dt = 2*1e-05;
+eps = dt;
 
 %iPhoto = zeros(size(jhvt))';
-curr_t_rod = t_start;
+%curr_t_rod = t_start;
 %ab = zeros(10, buffer_size);
 %i = 1;
-%maxD = [];
 
-tic
 figure
-h = animatedline;
-axis([0 t_end -60 -35])
-addpoints(h,curr_t_rod,rod0(1));
-drawnow
-while curr_t_rod < t_end && jhvt(end)>=curr_t_rod
-    input_j = interp1(jhvt, jhv, curr_t_rod);
+if test_num == 1
+    buffer_size = 60000;
+    t_start = 0;
+    t_end = 0.6;
+    j_vals = [10^(0), 10^(0.6), 10^(1.2), 10^(1.8), 10^(2.4), 10^(3.0), 10^(3.6)];
+    t_dur = 1300;
+    labels = {'10^0', '10^{0.6}', '10^{1.2}', '10^{1.8}', '10^{2.4}', '10^{3.0}',...
+    '10^{3.6}'};
+elseif test_num == 2
+    buffer_size = 1200000;
+    t_start = 0;
+    t_end = 12;
+    j_vals = [10^(2.4), 10^(3.0), 10^(3.6)];
+    t_dur = 1300;
+    labels = {'10^{2.4}', '10^{3.0}', '10^{3.6}'};
+elseif test_num == 3
+    buffer_size = 60000;
+    t_start = 0;
+    t_end = 0.6;
+    j_vals = [10^(0.6), 10^(1.2), 10^(1.8), 10^(2.4), 10^(3.0), 10^(3.6), ...
+        10^(4.2), 10^(4.8), 10^(5.4)];
+    t_dur = buffer_size;
+    labels = {'10^{0.6}', '10^{1.2}', '10^{1.8}', '10^{2.4}', '10^{3.0}',...
+    '10^{3.6}', '10^{4.2}', '10^{4.8}', '10^{5.4}'};
+elseif test_num == 4
+    buffer_size = 1200000;
+    t_start = 0;
+    t_end = 12;
+    j_vals = [10^(2.4), 10^(3.0), 10^(3.6), 10^(4.2), 10^(4.8), 10^(5.4)];
+    t_dur = 100000;
+    abels = {'10^{2.4}', '10^{3.0}', '10^{3.6}', '10^{4.2}', '10^{4.8}', '10^{5.4}'};
+end
+jhvt = linspace(0,t_end,buffer_size);
+
+for j = 1 : length(j_vals)
+jhv = zeros(size(jhvt));
+jhv(1:t_dur) = j_vals(j);
+curr_t_rod = t_start;
+rod = RodPhotoReceptor_RK(rod0, buffer_size, dt);
+% tic
+while abs(curr_t_rod - t_end) > eps
+    input_j = jhv(round(1+buffer_size/(t_end-t_start)*curr_t_rod));
     [y_rod, curr_t_rod, ~] = rod.solve(input_j);
     rod.update_time();
-    addpoints(h,curr_t_rod,y_rod(1));
-    drawnow limitrate
-%     [y_bip, curr_t_bip, c_bip] = bip.solve(y_rod(1));
-%     bip.update_time();
-    %maxD = [maxD, objdt];
     %iPhoto(i) = c(end);
     %ab(:, i) = c(10:19);
     %i = i + 1;
 end
-drawnow
-end_time = toc;
+%end_time = toc;
 
-t_per_step = end_time/length(jhvt);
-tot_t = end_time;
+%t_per_step = end_time/length(jhvt);
+%tot_t = end_time;
 
 t_vec = rod.get_tvec();
 t_vec_end = find(t_vec == curr_t_rod);
 
 v = rod.get_V();
-figure
-plot(t_vec(1:t_vec_end), v(1:t_vec_end)); title('Membrane Potential'); xlabel('t [s]'); ylabel('V_m [mV]')
+%figure
+plot(t_vec(1:t_vec_end), v(1:t_vec_end)-rod0(1)); title('Membrane Potential'); xlabel('t [s]'); ylabel('V_m [mV]')
 xlim([t_vec(1), t_vec(t_vec_end)])
 grid on
 grid minor
 
+hold on
+end
+legend(labels, 'Location', 'southeast');
+hold off
 % figure 
 % plot(t_vec(1:t_vec_end), 1./(ab(1,1:t_vec_end)+ab(2,1:t_vec_end)))
 % hold on 
