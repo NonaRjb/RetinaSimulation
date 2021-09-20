@@ -17,7 +17,7 @@ rod0 = [-36.185963, 0.43018469, 0.99927789, 0.43647161, 0.64228624,...
 
 %%% Horizontal Cell initial values %%%
 % [h_V, h_mA, h_hA, h_mKv, h_mCa, h_mNa, h_hNa, h_B, h_Ca, h_Gaba]
-h0 = [-60, 0.03, 0.998, 0.139, 0.059, 0.026, 0.922, 0, 0, 0];
+h0 = [-73, 0.03, 0.998, 0.139, 0.059, 0.026, 0.922, 0, 0, 0];
 
 %%% Rod Bipolar intitial values %%%
 % [bp_V, bp_mKv, bp_hKv, bp_mA, bp_hA, bp_C1, bp_C2, bp_O1, bp_O2, bp_O3,

@@ -96,20 +96,20 @@ classdef Horizontal < handle
 			% explicit functions
             %%% glu %%%
             % glu = 1/(1+exp(-Vpre+obj.alpha*obj.Y(10,k)));
-            % glu = exp((Vpre+obj.alpha*obj.Y(10,k))/30);
+            glu = exp((Vpre+obj.alpha*obj.Y(10,k))/30);
 %             if (Vpre - obj.Y(10, k)) >= 0
 %                 glu = tanh((Vpre - obj.Y(10, k))/20);
 %             else
 %                 glu = 0;
 %             end
 %                 
-            if obj.t_vec(k) <= 10
-                glu = 0;
-            elseif 10 < obj.t_vec(k) && obj.t_vec(k) < 90
-                glu = 100;
-            else
-                glu = 0;
-            end
+%             if obj.t_vec(k) <= 10
+%                 glu = 0;
+%             elseif 10 < obj.t_vec(k) && obj.t_vec(k) < 90
+%                 glu = 100;
+%             else
+%                 glu = 0;
+%             end
             
             % glu = 100;
 			%%% A %%%

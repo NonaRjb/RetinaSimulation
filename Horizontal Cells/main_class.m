@@ -20,10 +20,11 @@ h = Horizontal(h0, buffer_size, dt);
 jhvt = linspace(0,t_end,buffer_size);
 
 %%% input sample #1
-%jhv = 10*ones(size(jhvt));
+%jhv = -36*ones(size(jhvt));
+jhv = 10+(10-36)*exp(-jhvt/10);
 
 %%% input sample #2
-jhv = zeros(size(jhvt));
+%jhv = zeros(size(jhvt));
 %jhv(100000:end) = 1;
 
 %%% input sample #3
@@ -54,7 +55,7 @@ while abs(curr_t_h - t_end) > eps
     [~, curr_t_h, c] = h.solve(input_j);
     h.update_time();
     % glu(i) = c(8);
-    % iGlu(i) = c(6);
+    iGlu(i) = c(6);
     iCa (i) = c(1);
     D8(i) = c(9);
     dCain(i) = c(10);

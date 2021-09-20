@@ -8,6 +8,7 @@ classdef ConePhotoReceptor < handle
         buffer_size
         flag
         t_vec
+        method
         % constants cone
 		E = -72.0;      % [mV]
         tL = 10;        % [ms]
@@ -31,20 +32,25 @@ classdef ConePhotoReceptor < handle
     end
     
     methods
-        function obj = ConePhotoReceptor(Y0, buffer_size, dt)
+        function obj = ConePhotoReceptor(Y0, buffer_size, dt, method)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
                 buffer_size = 10000;
                 dt = 1e-06;
+                method = 'euler';
             elseif nargin == 2
                 dt = 1e-06;
+                method = 'euler';
+            elseif nargin == 3
+                method = 'euler';
             end
             
             obj.t = 1;
             obj.dt = dt;
             obj.buffer_size = buffer_size;
             obj.flag = 0;
+            obj.method = method;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(10, buffer_size);
@@ -108,14 +114,19 @@ classdef ConePhotoReceptor < handle
 %             end
             %objdt = obj.dt;
             
+            if strcmp(obj.method, 'rk4')
             %%%%% runge-kutta 4
-%             k1 = obj.dt * D;
-%             k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
-%             k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
-%             k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
-%             k_tot = 1/6*(k1+2*k2+2*k3+k4);
+                k1 = obj.dt * D;
+                k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
+                k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
+                k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
+                k_tot = 1/6*(k1+2*k2+2*k3+k4);
+            elseif strcmp(obj.method, 'euler')
             %%%%% forward euler
-            k_tot = obj.dt*D;
+                k_tot = obj.dt*D;
+            else
+                k_tot = obj.dt*D;
+            end
             
             
             % values of variables at the next time step
@@ -184,8 +195,8 @@ k12 = vars(4);
 k21 = vars(5);
 
 D = zeros(10, 1);
-D(1) = (E-Y(1)*(1+Y(2)+Gi))/tL;
-D(2) = (F-Y(2))/tf;
+D(1) = 1000*(E-Y(1)*(1+Y(2)+Gi))/tL;
+D(2) = 1000*(F-Y(2))/tf;
 D(3) = iC-alpha*Y(3);
 D(4) = alpha*(Y(3)-Y(4));
 D(5) = alpha*(Y(4)-Y(5));
