@@ -8,6 +8,7 @@ classdef Horizontal < handle
         buffer_size
         flag
         t_vec
+        method
         % constants Horizontal
 		gA = 2.2;   % [nS]
         gKv = 0.4;  % [nS]
@@ -50,25 +51,39 @@ classdef Horizontal < handle
         C_AT = 0.00625; % [nF]
         hAT = 0.17;     % [nS]
         V0 = 0;
+        % GABA
+        GABA_i = 10;    % [mM]
+        Na_i = 13.54;   % [mM]
+        Na_o = 108;     % [mM]
+        Cl_i = 60;      % [mM]
+        Cl_o = 116;     % [mM]
+        n = 2;          % number of Na+ ions transported per GABA molecule
+        m = 1;          % number of Clions transported per GABA molecule
+        t_GABA = 65;    % [ms]
         % variables
         Y
     end
     
     methods
-        function obj = Horizontal(Y0, buffer_size, dt)
+        function obj = Horizontal(Y0, buffer_size, dt, method)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
                 buffer_size = 10000;
                 dt = 1e-06;
+                method = 'euler';
             elseif nargin == 2
                 dt = 1e-06;
+                method = 'euler';
+            elseif nargin == 3
+                method = 'euler';
             end
             
             obj.t = 1;
             obj.dt = dt;
             obj.buffer_size = buffer_size;
             obj.flag = 0;
+            obj.method = method;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(10, buffer_size);
@@ -96,20 +111,21 @@ classdef Horizontal < handle
 			% explicit functions
             %%% glu %%%
             % glu = 1/(1+exp(-Vpre+obj.alpha*obj.Y(10,k)));
-            glu = exp((Vpre+obj.alpha*obj.Y(10,k))/30);
+            % glu = exp((Vpre+obj.alpha*obj.Y(10,k))/30);
+            % glu = ((Vpre+obj.alpha*obj.Y(10,k))/10);
 %             if (Vpre - obj.Y(10, k)) >= 0
 %                 glu = tanh((Vpre - obj.Y(10, k))/20);
 %             else
 %                 glu = 0;
 %             end
 %                 
-%             if obj.t_vec(k) <= 10
-%                 glu = 0;
-%             elseif 10 < obj.t_vec(k) && obj.t_vec(k) < 90
-%                 glu = 100;
-%             else
-%                 glu = 0;
-%             end
+            if obj.t_vec(k) <= 10
+                glu = 0;
+            elseif 10 < obj.t_vec(k) && obj.t_vec(k) < 90
+                glu = 100;
+            else
+                glu = 0;
+            end
             
             % glu = 100;
 			%%% A %%%
@@ -153,7 +169,8 @@ classdef Horizontal < handle
             iL = obj.gl*(obj.Y(1, k)-obj.El);
 			
             consts = [obj.C_S; obj.Btot; obj.kb; obj.kf; obj.bSB;...
-                obj.fSB; obj.tfb; obj.V0];
+                obj.fSB; obj.tfb; obj.V0; obj.GABA_i; obj.Na_i; obj.Cl_i;...
+                obj.Na_o; obj.Cl_o; obj.n; obj.m; obj.t_GABA; obj.R; obj.T; obj.F];
             
             vars = [iCa; iA; iKa; iKv; iGlu; iL; iNa; amA; bmA; ahA; bhA; amKv;...
                 bmKv; amCa; bmCa; amNa; bmNa; ahNa; bhNa; kb1; kb2; dCain; dCaef];
@@ -184,14 +201,19 @@ classdef Horizontal < handle
 %             end
             %objdt = obj.dt;
             
+            if strcmp(obj.method, 'rk4')
             %%%%% runge-kutta 4
-%             k1 = obj.dt * D;
-%             k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
-%             k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
-%             k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
-%             k_tot = 1/6*(k1+2*k2+2*k3+k4);
+                k1 = obj.dt * D;
+                k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
+                k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
+                k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
+                k_tot = 1/6*(k1+2*k2+2*k3+k4);
+            elseif strcmp(obj.method, 'euler')
             %%%%% forward euler
-            k_tot = obj.dt*D;
+                k_tot = obj.dt*D;
+            else
+                k_tot = obj.dt*D;
+            end
             
             
             % values of variables at the next time step
@@ -258,6 +280,17 @@ bSB = consts(5);
 fSB = consts(6);
 tfb = consts(7);
 V0 = consts(8);
+GABA_i = consts(9);
+Na_i = consts(10);
+Cl_i = consts(11);
+Na_o = consts(12);
+Cl_o = consts(13);
+n = consts(14);
+m = consts(15);
+t_GABA = consts(16); 
+R = consts(17);
+T = consts(18);
+F = consts(19);
 
 % vars
 iCa = vars(1);
@@ -295,7 +328,9 @@ D(7) = ahNa*(1-Y(7))-bhNa*Y(7);
 D(8) = Y(9)^3/(Y(9)^3+kb^3)*bSB*(Btot-Y(8))-Y(9)^3/(Y(9)^3+kf^3)*fSB*Y(8)*Y(9);
 D(9) = 1/(1+kb1+kb2)*(dCain+dCaef+D(8));
 D(10) = tfb*(Y(1)-V0-Y(10));
-
+% D(10) = 1/t_GABA*(GABA_i*Na_i^n*Cl_i^m/(Na_o^n*Cl_o^m)*exp((n-m)*Y(1)/(R*T/F))...
+%     -Y(10));
+% D(10) = 1/t_GABA*(exp((n-m)*(Y(1)-V0)*0.01)-Y(10));
 % if D(8) < 0
 %     D(8)
 % end

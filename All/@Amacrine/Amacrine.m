@@ -1,4 +1,4 @@
-classdef ConePhotoReceptor < handle
+classdef Amacrine < handle
     %UNTITLED Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -10,30 +10,29 @@ classdef ConePhotoReceptor < handle
         t_vec
         method
         gap_junction
-        % constants cone
-		E = -72.0;      % [mV]
-        tL = 10;        % [ms]
-        gf_bar = 0.2;
-        gi_bar = 0.7;
-        tf = 67;        % [ms]
-        Vf = -57.0;     % [mV]
-        Veps = 4.0;     % [mV]
-        alpha = 83.3;   % [sec^(-1)]
-        k12_bar = 10;   % [sec^(-1)]
-        k12_M = 250;    % [sec^(-1)]
-        k23 = 17;       % [sec^(-1)]
-        k34 = 1.3;      % [sec^(-1)]
-        k32 = 0.03;     % [sec^(-1)]
-        A = 6.76;       % k12/k21
-        nu = 2.125;     % [sec^(-2)]
-        K = 10;         % [sec]
-        offset;
+        % constants amacrine
+        tscale = 1000; 
+		C = 20;     % [pF]
+		gNa = 4;    % [mS/cm^2]
+		ENa = 40;   % [mV]
+		gK = 0.4;   % [mS/cm^2]
+        EK = -80;   % [mV]
+        gL = 0.46;  % [mS/cm^2]
+        El = -54.0; % [mV]
+        celcius_Na_A = 22;
+        celcius_K_A = 22;
+		% chemical synapse constants
+        gmax = 1.2;               % [nS] Maximum synapse conductance
+        Esyn = -10.0;             % [mV] Synapse's reversal potential
+        tau = 0.01;               % [ms] Time constant
+        Vslope = 20;              % [mV] Voltage sensitivity of the synapse
+        Vth = -36.424516776897130;% [mV]
         % variables
         Y
     end
     
     methods
-        function obj = ConePhotoReceptor(Y0, buffer_size, dt, method, gap_junction)
+        function obj = Amacrine(Y0, buffer_size, dt, method, gap_junction)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
@@ -60,11 +59,10 @@ classdef ConePhotoReceptor < handle
             obj.gap_junction = gap_junction;
             
             obj.t_vec = zeros(buffer_size, 1); 
-            obj.Y = zeros(10, buffer_size);
+            obj.Y = zeros(5, buffer_size);
 
 			% variables
 			obj.Y(:, 1) = Y0;
-            obj.offset = -Y0(1);
         end
 		
 		function update_time(obj)
@@ -73,7 +71,7 @@ classdef ConePhotoReceptor < handle
             end
 		end
         
-        function [y, curr_t, c]  = solve(obj,iC,v_rod)
+        function [y, curr_t, c]  = solve(obj, Vpre, v_bip)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
 			
@@ -83,22 +81,34 @@ classdef ConePhotoReceptor < handle
                 k = obj.t;
             end
 			% explicit functions
+			%%% Na %%%
+            [am_A, bm_A] = m(obj.Y(1, k), obj.celcius_Na_A);
+            [ah_A, bh_A] = h(obj.Y(1, k), obj.celcius_Na_A);
+			tau_m_Na = 1/(am_A+bm_A);
+            m_inf_Na = am_A/(am_A+bm_A);
+            tau_h_Na = 1/(ah_A/3.5+bh_A/3.5);
+            h_inf_Na = ah_A/(ah_A+bh_A);
+            iNa = obj.gNa*obj.Y(2, k)^3*obj.Y(3, k)*(obj.Y(1, k)-obj.ENa);
+            %%% K %%%
+            [an_A, bn_A] = n(obj.Y(1, k), obj.celcius_K_A);
+            tau_n_K = 1/(an_A/5+bn_A/5);
+            n_inf_K = an_A/(an_A+bn_A);
+            iK = obj.gK*obj.Y(4, k)^4*(obj.Y(1, k)-obj.EK);
+			%%% L %%%
+			iL = obj.gL*(obj.Y(1, k)-obj.El);
+            %%% Isyn %%%
+            S_inf = tanh(abs(Vpre-obj.Vth)/obj.Vslope);
+            Isyn = obj.gmax*obj.Y(5, k)*(obj.Y(1, k)-obj.Esyn);
 			
-            Gi = obj.gi_bar/(1+obj.Y(8, k)/obj.K);
-            F = obj.gf_bar/(1+exp((obj.Y(1, k)-obj.Vf)/obj.Veps));
-            k12 = obj.k12_bar+obj.nu*obj.Y(9, k)*(obj.k12_M-obj.k12_bar)...
-                /(obj.k12_M-obj.k12_bar+obj.nu*obj.Y(9, k));
-            k21 = k12/obj.A;
-			
-            consts = [obj.E; obj.tL; obj.tf; obj.alpha; obj.k23; obj.k32;...
-                obj.k34; obj.offset];
+            consts = [obj.C; obj.tau; obj.Vth; obj.tscale];
             
-            vars = [Gi; F; iC; k12; k21];
+            vars = [iNa; iK; iL; tau_m_Na; m_inf_Na; tau_h_Na; ...
+                h_inf_Na; tau_n_K; n_inf_K; Isyn; S_inf; Vpre];
             
             if obj.gap_junction == 0
                 D = f(obj.Y(:,k), vars, consts);
             else
-                D = f(obj.Y(:,k), vars, consts, v_rod);
+                D = f(obj.Y(:,k), vars, consts, v_bip);
             end
             
             %%%% specify dt %%%%
@@ -133,10 +143,11 @@ classdef ConePhotoReceptor < handle
                 k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
                 k_tot = 1/6*(k1+2*k2+2*k3+k4);
             elseif strcmp(obj.method, 'rk4') && obj.gap_junction == 1
+                %%%%% runge-kutta 4
                 k1 = obj.dt * D;
-                k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts, v_rod);
-                k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts, v_rod);
-                k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts, v_rod);
+                k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts, v_bip);
+                k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts, v_bip);
+                k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts, v_bip);
                 k_tot = 1/6*(k1+2*k2+2*k3+k4);
             elseif strcmp(obj.method, 'euler')
             %%%%% forward euler
@@ -172,7 +183,8 @@ classdef ConePhotoReceptor < handle
             end
             
             
-            c = [Gi; F; k12; k21];
+            c = [am_A, bm_A, ah_A, bh_A, iNa, an_A, bn_A, iK, ...
+                iL, S_inf, Isyn];
             
         end
         
@@ -187,44 +199,100 @@ classdef ConePhotoReceptor < handle
         function tVector = get_tvec(obj)
             tVector = obj.t_vec;
         end
+        
+        function set_Vth(obj, vth)
+            obj.Vth = vth;
+        end
     end
 end
 
+%%%% Q10_A %%%%
+function fun = q10_A(temp)
+
+fun = 3.0 ^ ((temp-6.3)/10.0);
+
+end
+
+%%%% Expm1_A %%%%
+function fun = expm1_A(x, y)
+
+if abs(x/y) < 1e-06
+    fun = y*(1-x/(2*y));
+else
+    fun = x/(exp(x/y)-1);
+end
+
+end
+
+%%%% m_A %%%%
+function [am_A, bm_A] = m(V, temp_Na)
+
+V = -V-65;
+am_A = q10_A(temp_Na)*0.1*expm1_A((V+25),10);
+bm_A = q10_A(temp_Na)*4*exp(V/18);
+
+end
+
+%%%% h_A %%%%
+function [ah_A, bh_A] = h(V, temp_Na)
+
+V = -V-65;
+ah_A = q10_A(temp_Na)*0.07*exp(V/20);
+bh_A = q10_A(temp_Na)*1/(exp(0.1*V+3)+1);
+
+end
+
+%%%% n_A %%%%
+function [an_A, bn_A] = n(V, temp_K)
+
+V = -V-65;
+an_A = q10_A(temp_K)*0.01*expm1_A(V+10,10);
+bn_A = q10_A(temp_K)*0.125*exp(V/80);
+
+end
 
 %%%% F %%%%
-function D = f(Y, vars, consts, v_rod)
+function D = f(Y, vars, consts, v_bip)
 
 % consts
-E = consts(1);
-tL = consts(2);
-tf = consts(3);
-alpha = consts(4);
-k23 = consts(5);
-k32 = consts(6);
-k34 = consts(7);
-offset = consts(8);
+C = consts(1);
+tau = consts(2);
+Vth = consts(3);
+tscale = consts(4);
 
 % vars
-Gi = vars(1);
-F = vars(2);
-iC = vars(3);
-k12 = vars(4);
-k21 = vars(5);
+iNa = vars(1);
+iK = vars(2);
+iL = vars(3);
+tau_m_Na = vars(4);
+m_inf_Na = vars(5);
+tau_h_Na = vars(6);
+h_inf_Na = vars(7);
+tau_n_K = vars(8);
+n_inf_K = vars(9);
+Isyn = vars(10);
+S_inf = vars(11);
+Vpre = vars(12);
 
-D = zeros(10, 1);
+D = zeros(5, 1);
+Iall = iNa + iK + iL + Isyn;
 if nargin == 3
-    D(1) = 1000*(E-Y(1)*(1+Y(2)+Gi))/tL;
+    D(1) = ((-Iall)/C)*tscale;
 elseif nargin == 4
-    D(1) = 1000*(E-Y(1)*(1+Y(2)+Gi)+0.2*(v_rod-Y(1)))/tL;
+    D(1) = ((-Iall+0.2*(v_bip-Y(1)))/C)*tscale;
 end
-D(2) = 1000*(F-Y(2))/tf;
-D(3) = iC-alpha*Y(3);
-D(4) = alpha*(Y(3)-Y(4));
-D(5) = alpha*(Y(4)-Y(5));
-D(6) = alpha*(Y(5)-Y(6));
-D(7) = alpha*(Y(6)-Y(7));
-D(8) = alpha*Y(7)-k12*Y(8)+k21*Y(9);
-D(9) = k12*Y(8)-(k21+k23)*Y(9)+k32*Y(10);
-D(10) = k23*Y(9)-(k32+k34)*Y(10);
+D(2) = (m_inf_Na-Y(2))/tau_m_Na*tscale;
+D(3) = (h_inf_Na-Y(3))/tau_h_Na*tscale;
+D(4) = (n_inf_K-Y(4))/tau_n_K*tscale;
+if Vpre < Vth
+    D(5) = 0;
+elseif abs(Vpre-Vth)>= 0
+    D(5) = (S_inf-Y(5))/((1-S_inf)*tau);
+else
+    D(5) = 0;
+end
+
+
+
 
 end

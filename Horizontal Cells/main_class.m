@@ -1,11 +1,11 @@
-clc
+ clc
 clear variable
 close all
 
 
 %%% Horizontal Cell initial values %%%
 % [h_V, h_mA, h_hA, h_mKv, h_mCa, h_mNa, h_hNa, h_B, h_Ca, h_Gaba]
-h0 = [-70, 0.03, 0.998, 0.139, 0.059, 0.026, 0.922, 0, 0.05, 0];
+h0 = [-70, 0.03, 0.998, 0.139, 0.059, 0.026, 0.922, 0, 0.05, 0.1];
 
 %%% Horizontal Cell 2 initial values %%%
 % h0 = [-80, 0.026, 0.922, 0.059, 0.139, 0.139, 0.932, 0.03, 0.998]; 
@@ -21,10 +21,10 @@ jhvt = linspace(0,t_end,buffer_size);
 
 %%% input sample #1
 %jhv = -36*ones(size(jhvt));
-jhv = 10+(10-36)*exp(-jhvt/10);
+%jhv = 10+(10-36)*exp(-jhvt/10);
 
 %%% input sample #2
-%jhv = zeros(size(jhvt));
+jhv = zeros(size(jhvt));
 %jhv(100000:end) = 1;
 
 %%% input sample #3

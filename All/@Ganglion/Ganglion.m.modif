@@ -15,7 +15,7 @@ classdef Ganglion < handle
 		gNa = 40;%50;   % [mS/cm^2]
 		ENa = 35;   % [mV]
 		gA = 36;    % [mS/cm^2]
-		gCa = 2.8;  % [mS/cm^2]
+		gCa = 2;%2.2;  % [mS/cm^2]
 		gK = 12;    % [mS/cm^2]
         EK = -70;%-75;   % [mV]
 		gKCa = 0.05;% [mS/cm^2]
@@ -24,11 +24,11 @@ classdef Ganglion < handle
 		R = 8.314;
         T = 293;
         F = 9.684e04;
-        Cae = 1800;
-        Cadiss = 1.0;
-        r = 8;%12.5;
-        Cares = 0.1;
-        tCa = 50;
+        Cae = 1.8;%1800;
+        Cadiss = 0.001;%1.0;
+        r = 0.1;%12.5;
+        Cares = 1e-04;%0.1;
+        tCa = 1.5;%49;
 		% chemical synapse constants
         gmax = 2.56;              % [nS] Maximum synapse conductance
         Esyn = 0.0;               % [mV] Synapse's reversal potential
@@ -116,8 +116,8 @@ classdef Ganglion < handle
 %                 S_inf = 0;
 %             end
             S_inf = tanh(abs(Vpre-obj.Vth)/obj.Vslope);
-            %Isyn = obj.gmax*obj.Y(9, k)*(obj.Y(1, k)-obj.Esyn);
-            Isyn = Vpre;
+            Isyn = obj.gmax*obj.Y(9, k)*(obj.Y(1, k)-obj.Esyn);
+            %Isyn = Vpre;
 			
             consts = [obj.C; obj.F; obj.r; obj.Cares; obj.tCa; obj.tau;...
                 obj.Vth; obj.tscale];
@@ -255,22 +255,22 @@ S_inf = vars(20);
 Vpre = vars(21);
 
 D = zeros(9, 1);
-D(1) = ((-(iNa+iA+iK+iCa+iKCa+iL)*20+Isyn)/(20*C))*tscale;
+D(1) = ((-(iNa+iA+iK+iCa+iKCa+iL)*20-Isyn)/(20*C))*tscale;
 D(2) = (am_Na*(1.0-Y(2))-bm_Na*Y(2))*tscale;
 D(3) = (ah_Na*(1.0-Y(3))-bh_Na*Y(3))*tscale;
 D(4) = (an_Ca*(1.0-Y(4))-bn_Ca*Y(4))*tscale;
-D(5) = (-(((10^4)*3.0*iCa)/(2.0*F*r))-((Y(5)-Cares)/tCa))*tscale;
-%D(5) = (-((3.0*iCa)/(2.0*F*r))-((Y(5)-Cares)/tCa))*tscale;
+%D(5) = (-(((10^4)*3.0*iCa)/(2.0*F*r))-((Y(5)-Cares)/tCa))*tscale;
+D(5) = (-((3.0*iCa)/(2.0*F*r))-((Y(5)-Cares)/tCa))*tscale;
 D(6) = (an_K*(1.0-Y(6))-bn_K*Y(6))*tscale;
 D(7) = (am_A*(1.0-Y(7))-bm_A*Y(7))*tscale;
 D(8) = (ah_A*(1.0-Y(8))-bh_A*Y(8))*tscale;
-% if Vpre <= Vth
-%     D(9) = 0;
-% elseif abs(Vpre-Vth)>= 0
-%     D(9) = (S_inf-Y(9))/((1-S_inf)*tau);
-% else
-%     D(9) = 0;
-% end
+if Vpre <= Vth
+    D(9) = 0;
+elseif abs(Vpre-Vth)>= 0
+    D(9) = (S_inf-Y(9))/((1-S_inf)*tau);
+else
+    D(9) = 0;
+end
 
 
 

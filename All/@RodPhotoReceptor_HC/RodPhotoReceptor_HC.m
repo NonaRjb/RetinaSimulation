@@ -1,4 +1,4 @@
-classdef RodPhotoReceptor_RK < handle
+classdef RodPhotoReceptor_HC < handle
     %UNTITLED Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -9,7 +9,6 @@ classdef RodPhotoReceptor_RK < handle
         flag
         t_vec
         method
-        gap_junction
         % constants
 		Cm = 0.02;      % [nF]
 		gKv = 2.0;      % [nS]
@@ -23,12 +22,12 @@ classdef RodPhotoReceptor_RK < handle
 		Eh = -32.0;     % [mV]
 		gL = 0.35;      % [nS]
 		EL = -77.0;     % [mV]
-		F = 9.64846e04;         % [cmol^(-1)] Faraday const.
-		V1 = 3.812e-13;         % [dm^3] Volume of submembrane area
-		V2 = 5.236e-13;         % [dm^3] Volume of deep intracellular area
-		DCa = 6e-08;            % [d(m^2)(s^(-1))] Ca diffusion coefficient 
-		S1 = 3.142e-08;         % [dm^2] Surface area of the submembrane and the deep intracellular area spherical boundary
-		delta = 3e-05;%5*10^(-5);      % [dm] Distance between submembrane area and the deep intracellular area
+		F = 9.64846*10^4;       % [cmol^(-1)] Faraday const.
+		V1 = 3.812*10^(-13);    % [dm^3] Volume of submembrane area
+		V2 = 5.236*10^(-13);    % [dm^3] Volume of deep intracellular area
+		DCa = 6*10^(-8);        % [d(m^2)(s^(-1))] Ca diffusion coefficient 
+		S1 = 3.142*10^(-8);     % [dm^2] Surface area of the submembrane and the deep intracellular area spherical boundary
+		delta = 5*10^(-5);      % [dm] Distance between submembrane area and the deep intracellular area
 		Lb1 = 0.4;              % [s^(-1)uM^(-1)] On rate constant for the binding of Ca to low-affinity buffer
 		Lb2 = 0.2;              % [s^(-1)uM^(-1)] Off rate constant for the binding of Ca to low-affinity buffer
 		Hb1 = 100;              % [s^(-1)uM^(-1)]  On rate constant for the binding of Ca to high-affinity buffer
@@ -63,23 +62,18 @@ classdef RodPhotoReceptor_RK < handle
     end
     
     methods
-        function obj = RodPhotoReceptor_RK(Y0, buffer_size, dt, method, gap_junction)
+        function obj = RodPhotoReceptor_HC(Y0, buffer_size, dt, method)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
                 buffer_size = 10000;
                 dt = 1e-06;
                 method = 'euler';
-                gap_junction = 0;
             elseif nargin == 2
                 dt = 1e-06;
                 method = 'euler';
-                gap_junction = 0;
             elseif nargin == 3 
                 method = 'euler';
-                gap_junction = 0;
-            elseif nargin == 4
-                gap_junction = 0;
             end
             
             obj.t = 1;
@@ -87,7 +81,6 @@ classdef RodPhotoReceptor_RK < handle
             obj.buffer_size = buffer_size;
             obj.flag = 0;
             obj.method = method;
-            obj.gap_junction = gap_junction;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(23, buffer_size);
@@ -102,7 +95,7 @@ classdef RodPhotoReceptor_RK < handle
             end
 		end
         
-        function [y, curr_t, c]  = solve(obj, jhv, v_cone)
+        function [y, curr_t, c]  = solve(obj, jhv, hc_feed)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
 			
@@ -113,28 +106,22 @@ classdef RodPhotoReceptor_RK < handle
             end
 			% explicit functions
 			%%% Kv %%%
-            am_Kv = 5*(100-obj.Y(1, k))/(exp((100-obj.Y(1, k))/42)-1);
-            bm_Kv = 9*exp(-(obj.Y(1, k)-20)/40);
-            ah_Kv = 0.15*exp(-obj.Y(1, k)/22);
-            bh_Kv = 0.4125/(exp((10-obj.Y(1, k))/7)+1);
+			[am_Kv, bm_Kv, ah_Kv, bh_Kv] = Kv(obj.Y(1, k));
 			iKv = obj.gKv*obj.Y(2, k)^3*obj.Y(3, k)*(obj.Y(1,k)-obj.Ek);
 			%%% Ca %%%
-			Eca = -12.5*log(obj.Y(11, k)/obj.Ca0);
-            am_Ca = 3*(80-obj.Y(1, k))/(exp((80-obj.Y(1, k))/25)-1);
-            bm_Ca = 10/(1+exp((obj.Y(1, k)+38)/7));
+			Eca = -12.9*log(obj.Y(11, k)/obj.Ca0);%+70*hc_feed;
+			[am_Ca, bm_Ca] = Ca(obj.Y(1, k), hc_feed);
 			hCa = exp((40-obj.Y(1, k))/18)/(1+exp((40-obj.Y(1, k))/18));
 			iCa = obj.gCa*obj.Y(4, k)^4*hCa*(obj.Y(1, k)-Eca);
 			%%% Cl_Ca %%%
 			mCl_Ca = 1/(1+exp((0.37-obj.Y(11, k))/0.09));
 			iCl = obj.gClCa*mCl_Ca*(obj.Y(1, k)-obj.Eclca);
 			%%% K_Ca %%%
-            am_KCa = 15*(80-obj.Y(1, k))/(exp((80-obj.Y(1, k))/40)-1);
-            bm_KCa = 20*exp(-obj.Y(1, k)/35);
+			[am_KCa, bm_KCa] = K_Ca(obj.Y(1, k));
 			mKCas = obj.Y(11, k)/(obj.Y(11, k)+0.3);
 			iKCa = obj.gKCa*obj.Y(5, k)^2*mKCas*(obj.Y(1, k)-obj.Ek);
 			%%% h %%%
-            ah = 8/(exp((obj.Y(1, k)+78)/14)+1);
-            bh = 18/(exp(-(obj.Y(1, k)+8)/19)+1);
+			[ah, bh] = h(obj.Y(1, k));
 			ih = obj.gh*(obj.Y(8, k)+obj.Y(9, k)+obj.Y(10, k))*(obj.Y(1, k)-obj.Eh);
 			%%% L %%%
 			iL =  obj.gL*(obj.Y(1, k)-obj.EL);
@@ -144,7 +131,8 @@ classdef RodPhotoReceptor_RK < handle
 			%%% photo %%%
 			j = obj.jmax*(obj.Y(23, k))^3/(obj.Y(23, k)^3+1000);
 			iPhoto = -j*(1.0-exp((obj.Y(1, k)-8.5)/17.0));
-			
+			%iPhoto = 2*j*(obj.Y(1, k)-10);
+            
             consts = [obj.Cm; obj.F; obj.V1; obj.V2; obj.DCa; obj.S1;... 
                 obj.delta; obj.Lb1; obj.Lb2; obj.Hb1; obj.Hb2; obj.BL;...
                 obj.BH; obj.a1; obj.a2; obj.a3; obj.e; obj.Ttot; ...
@@ -156,11 +144,7 @@ classdef RodPhotoReceptor_RK < handle
                 am_Kv; bm_Kv; ah_Kv; bh_Kv; am_Ca; bm_Ca; am_KCa;...
                 bm_KCa; ah; bh; jhv; j];
             
-            if obj.gap_junction == 0
-                D = f(obj.Y(:,k), vars, consts);
-            else
-                D = f(obj.Y(:,k), vars, consts, v_cone);
-            end
+            D = f(obj.Y(:,k), vars, consts);
             
             %%%% specify dt %%%%
 %             
@@ -186,18 +170,12 @@ classdef RodPhotoReceptor_RK < handle
 %             end
             %objdt = obj.dt;
             
-            if strcmp(obj.method, 'rk4') && obj.gap_junction == 0
+            if strcmp(obj.method, 'rk4')
             %%%%% runge-kutta 4
                 k1 = obj.dt * D;
                 k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
                 k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
                 k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
-                k_tot = 1/6*(k1+2*k2+2*k3+k4);
-            elseif strcmp(obj.method, 'rk4') && obj.gap_junction == 1
-                k1 = obj.dt * D;
-                k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts, v_cone);
-                k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts, v_cone);
-                k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts, v_cone);
                 k_tot = 1/6*(k1+2*k2+2*k3+k4);
             elseif strcmp(obj.method, 'euler')
             %%%%% forward euler
@@ -258,8 +236,51 @@ classdef RodPhotoReceptor_RK < handle
 end
 
 
+%%%%% Kv %%%%%
+function [am_Kv, bm_Kv, ah_Kv, bh_Kv] = Kv(V)
+
+am_Kv = 5*(100-V)/(exp((100-V)/42)-1);
+bm_Kv = 9*exp(-(V-20)/40);
+ah_Kv = 0.15*exp(-V/22);
+bh_Kv = 0.4125/(exp((10-V)/7)+1);
+
+end
+%%%%%%%%%%%%%%%%
+
+%%%%% Ca %%%%%
+function [am_Ca, bm_Ca] = Ca(V, hc_feed)
+
+% am_Ca = 3*(80-V)/(exp((80-V)/25)-1);
+% bm_Ca = 10/(1+exp((V+38)/7));
+
+hc_feed = 2*hc_feed;
+am_Ca = 3*(80-V-hc_feed)/(exp((80-V-hc_feed)/25)-1); %+1.5*exp(-0.1*hc_feed);
+bm_Ca = 10/(1+exp((V+38+hc_feed)/7)); %-2*exp(-0.05*hc_feed);
+
+
+end
+%%%%%%%%%%%%%%%%
+
+%%%%% K_Ca %%%%%
+function [am_KCa, bm_KCa] = K_Ca(V)
+
+am_KCa = 15*(80-V)/(exp((80-V)/40)-1);
+bm_KCa = 20*exp(-V/35);
+
+end
+%%%%%%%%%%%%%%%%
+
+%%%%% h %%%%%
+function [ah, bh] = h(V)
+
+ah = 8/(exp((V+78)/14)+1);
+bh = 18/(exp(-(V+8)/19)+1);
+
+end
+%%%%%%%%%%%%%%%%
+
 %%%% F %%%%
-function D = f(Y, vars, consts, v_cone)
+function D = f(Y, vars, consts)
 
 % consts
 Cm = consts(1);
@@ -320,12 +341,7 @@ j = vars(21);
 
 
 D = zeros(23, 1);
-Iall = iKv+iCa+iCl+iKCa+ih+iL+iPhoto+iex+iex2;
-if nargin == 3
-    D(1) = 1/Cm*(-Iall);
-elseif nargin == 4
-    D(1) = 1/Cm*(-Iall+0.2*(v_cone-Y(1)));
-end
+D(1) = 1/Cm*-(iKv+iCa+iCl+iKCa+ih+iL+iPhoto+iex+iex2);
 D(2) = am_Kv*(1-Y(2))-bm_Kv*Y(2);
 D(3) = ah_Kv*(1-Y(3))-bh_Kv*Y(3);
 D(4) = am_Ca*(1-Y(4))-bm_Ca*Y(4);

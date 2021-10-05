@@ -8,7 +8,7 @@ classdef Amacrine < handle
         buffer_size
         flag
         t_vec
-        % constants ganglion
+        % constants amacrine
         tscale = 1000; 
 		C = 20;     % [uF/cm^2]
 		gNa = 4;    % [mS/cm^2]

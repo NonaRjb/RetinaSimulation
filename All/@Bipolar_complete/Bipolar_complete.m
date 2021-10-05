@@ -9,6 +9,7 @@ classdef Bipolar_complete < handle
         flag
         t_vec
         method
+        gap_junction
         % constants bipolar
 		C = 0.01;   % [pF]
 		gKv = 2.0;  % [nS]
@@ -49,18 +50,23 @@ classdef Bipolar_complete < handle
     end
     
     methods
-        function obj = Bipolar_complete(Y0, buffer_size, dt, method)
+        function obj = Bipolar_complete(Y0, buffer_size, dt, method, gap_junction)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
                 buffer_size = 10000;
                 dt = 1e-06;
                 method = 'euler';
+                gap_junction = 0;
             elseif nargin == 2
                 dt = 1e-06;
                 method = 'euler';
+                gap_junction = 0;
             elseif nargin == 3
                 method = 'euler';
+                gap_junction = 0;
+            elseif nargin == 4
+                gap_junction = 0;
             end
             
             obj.t = 1;
@@ -68,6 +74,7 @@ classdef Bipolar_complete < handle
             obj.buffer_size = buffer_size;
             obj.flag = 0;
             obj.method = method;
+            obj.gap_junction = gap_junction;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(19, buffer_size);
@@ -82,7 +89,7 @@ classdef Bipolar_complete < handle
             end
 		end
         
-        function [y, curr_t, c]  = solve(obj,Vpre)
+        function [y, curr_t, c]  = solve(obj,Vpre,v_a)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
 			
@@ -117,11 +124,6 @@ classdef Bipolar_complete < handle
                 -obj.Camin+2.3)*exp(-(obj.Y(1, k)+14.0)/70.0);
 			Iex2 = obj.Jex2*(obj.Y(13, k)-obj.Camin)/(obj.Y(13, k)-obj.Camin+0.5);
             %%% Isyn %%%
-%             if Vpre > obj.Vth
-%                 S_inf = tanh((Vpre-obj.Vth)/obj.Vslope);
-%             else
-%                 S_inf = 0;
-%             end
             S_inf = tanh(abs(Vpre-obj.Vth)/obj.Vslope);
             Isyn = obj.gmax*obj.Y(19, k)*(obj.Y(1, k)-obj.Esyn);
 			
@@ -133,7 +135,11 @@ classdef Bipolar_complete < handle
                 am_A; bm_A; ah_A; bh_A; ah; bh; am_Ca; bm_Ca; am_KCa;...
                 bm_KCa; Iex; Iex2; Isyn; S_inf; Vpre];
             
-            D = f(obj.Y(:,k), vars, consts);
+            if obj.gap_junction == 0
+                D = f(obj.Y(:,k), vars, consts);
+            else
+                D = f(obj.Y(:, k), vars, consts, v_a);
+            end
             
             %%%% specify dt %%%%
 %             
@@ -159,12 +165,19 @@ classdef Bipolar_complete < handle
 %             end
             %objdt = obj.dt;
             
-            if strcmp(obj.method, 'rk4')
+            if strcmp(obj.method, 'rk4') && obj.gap_junction == 0
             %%%%% runge-kutta 4
                 k1 = obj.dt * D;
                 k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
                 k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
                 k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
+                k_tot = 1/6*(k1+2*k2+2*k3+k4);
+            elseif strcmp(obj.method, 'rk4') && obj.gap_junction == 1
+                %%%%% runge-kutta 4
+                k1 = obj.dt * D;
+                k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts, v_a);
+                k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts, v_a);
+                k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts, v_a);
                 k_tot = 1/6*(k1+2*k2+2*k3+k4);
             elseif strcmp(obj.method, 'euler')
             %%%%% forward euler
@@ -281,7 +294,7 @@ end
 %%%%%%%%%%%%%%%%
 
 %%%% F %%%%
-function D = f(Y, vars, consts)
+function D = f(Y, vars, consts, v_a)
 
 % consts
 C = consts(1);
@@ -331,7 +344,12 @@ Vpre = vars(25);
 
 
 D = zeros(19, 1);
-D(1) = 1/C*-(iKv+iA+ih+iCa+iKCa+iL+Isyn);
+Iall = iKv+iA+ih+iCa+iKCa+iL+Isyn;
+if nargin == 3
+    D(1) = 1/C*(-Iall);
+elseif nargin == 4
+    D(1) = 1/C*(-Iall+0.2*(v_a-Y(1)));
+end
 D(2) = am_Kv*(1.0-Y(2))-bm_Kv*Y(2);
 D(3) = ah_Kv*(1.0-Y(3))-bh_Kv*Y(3);
 D(4) = am_A*(1.0-Y(4))-bm_A*Y(4);

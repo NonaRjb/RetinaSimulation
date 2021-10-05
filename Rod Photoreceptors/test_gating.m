@@ -64,6 +64,12 @@ plot(v, 1./(ab(9,:)+ab(10,:)))
 hold off
 legend('\tau_{mKv}', '\tau_{hKv}', '\tau_{mCa}', '\tau_{mKCa}', '\tau_{h}')
 
+figure
+subplot(2, 1, 1)
+plot(v, ab(5,:)); title('am_{Ca}')
+subplot(2, 1, 2)
+plot(v, ab(6,:)); title('bm_{Ca}')
+
 
 %%%%% Kv %%%%%
 function ab = Kv(V)

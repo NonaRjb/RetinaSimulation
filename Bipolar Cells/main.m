@@ -2,6 +2,12 @@ clc
 clear variables
 close all
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% for this test I_A is not included in calculation of dV/dt. Also I_syn has been
+% replaced by Vpre to play the role of external stimualation and has a positive-sign
+% contribution in calculating dV/dt
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%% initial values for the bipolar cell
 % [V, mKv, hKv, mA, hA, C1, C2, O1, O2, O3, mCa, mKCa, Cas, Cad, Cabls, 
 %  Cabhs, Cabld, Cabhd]

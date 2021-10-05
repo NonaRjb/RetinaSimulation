@@ -31,12 +31,12 @@ bip0 = [-36.424516776897130, 0.824374082910590, 0.109794106890060, ...
 rgc0 = [-61.698524, 0.027940, 0.887161, 0.003019, 0.100007, 0.107809, ...
     0.070467, 0.300453, 0.0];
 
-buffer_size = 1000000; % if set to 1000000 the result will be accurate but needs more time
+buffer_size = 1000000;
 t_start = 0;
 t_end = 10;
 dt = 2*1e-05;
 eps = dt;
-method = 'rk4';
+method = 'euler';
 rod = RodPhotoReceptor_RK(rod0, buffer_size, dt, method);
 bip = Bipolar_complete(bip0, buffer_size, dt, method);
 rgc = Ganglion(rgc0, buffer_size, dt, method);

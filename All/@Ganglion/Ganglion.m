@@ -12,7 +12,7 @@ classdef Ganglion < handle
         % constants ganglion
         tscale = 1000; 
 		C = 1;      % [uF/cm^2]
-		gNa = 50;   % [mS/cm^2]
+		gNa = 53; %50;   % [mS/cm^2]
 		ENa = 35;   % [mV]
 		gA = 36;    % [mS/cm^2]
 		gCa = 2.2;  % [mS/cm^2]
@@ -28,7 +28,7 @@ classdef Ganglion < handle
         Cadiss = 1.0;
         r = 12.5;
         Cares = 0.1;
-        tCa = 50;
+        tCa = 1.5; %50;
 		% chemical synapse constants
         gmax = 2.56;              % [nS] Maximum synapse conductance
         Esyn = 0.0;               % [mV] Synapse's reversal potential

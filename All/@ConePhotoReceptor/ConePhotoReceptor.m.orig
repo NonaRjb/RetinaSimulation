@@ -73,7 +73,7 @@ classdef ConePhotoReceptor < handle
             end
 		end
         
-        function [y, curr_t, c]  = solve(obj,iC,v_rod)
+        function [y, curr_t, c]  = solve(obj, iC)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
 			
@@ -125,18 +125,12 @@ classdef ConePhotoReceptor < handle
 %             end
             %objdt = obj.dt;
             
-            if strcmp(obj.method, 'rk4') && obj.gap_junction == 0
+            if strcmp(obj.method, 'rk4')
             %%%%% runge-kutta 4
                 k1 = obj.dt * D;
                 k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts);
                 k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts);
                 k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts);
-                k_tot = 1/6*(k1+2*k2+2*k3+k4);
-            elseif strcmp(obj.method, 'rk4') && obj.gap_junction == 1
-                k1 = obj.dt * D;
-                k2 = obj.dt * f(obj.Y(:, k)+k1/2, vars, consts, v_rod);
-                k3 = obj.dt * f(obj.Y(:, k)+k2/2, vars, consts, v_rod);
-                k4 = obj.dt * f(obj.Y(:, k)+k3, vars, consts, v_rod);
                 k_tot = 1/6*(k1+2*k2+2*k3+k4);
             elseif strcmp(obj.method, 'euler')
             %%%%% forward euler
@@ -212,9 +206,9 @@ k12 = vars(4);
 k21 = vars(5);
 
 D = zeros(10, 1);
-if nargin == 3
+if nargin == 1
     D(1) = 1000*(E-Y(1)*(1+Y(2)+Gi))/tL;
-elseif nargin == 4
+elseif nargin == 2
     D(1) = 1000*(E-Y(1)*(1+Y(2)+Gi)+0.2*(v_rod-Y(1)))/tL;
 end
 D(2) = 1000*(F-Y(2))/tf;
