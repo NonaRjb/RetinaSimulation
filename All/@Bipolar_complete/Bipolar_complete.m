@@ -45,12 +45,14 @@ classdef Bipolar_complete < handle
         tau = 0.01;       % [ms] Time constant
         Vslope = 20;    % [mV] Voltage sensitivity of the synapse
         Vth = -36.185963;      % [mV]
+        % gap junction
+        g_vals
         % variables
         Y
     end
     
     methods
-        function obj = Bipolar_complete(Y0, buffer_size, dt, method, gap_junction)
+        function obj = Bipolar_complete(Y0, buffer_size, dt, method, gap_junction, g_vals)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
@@ -58,15 +60,24 @@ classdef Bipolar_complete < handle
                 dt = 1e-06;
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 2
                 dt = 1e-06;
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 3
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 4
                 gap_junction = 0;
+                g_vals = [];
+            elseif nargin == 5
+                if gap_junction == 1
+                    error('you need to provide electrical synapses conductance values')
+                end
+                g_vals = [];
             end
             
             obj.t = 1;
@@ -75,6 +86,7 @@ classdef Bipolar_complete < handle
             obj.flag = 0;
             obj.method = method;
             obj.gap_junction = gap_junction;
+            obj.g_vals = g_vals;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(19, buffer_size);
@@ -138,7 +150,7 @@ classdef Bipolar_complete < handle
             if obj.gap_junction == 0
                 D = f(obj.Y(:,k), vars, consts);
             else
-                D = f(obj.Y(:, k), vars, consts, v_a);
+                D = f(obj.Y(:, k), vars, consts, v_a, obj.g_vals);
             end
             
             %%%% specify dt %%%%
@@ -294,7 +306,7 @@ end
 %%%%%%%%%%%%%%%%
 
 %%%% F %%%%
-function D = f(Y, vars, consts, v_a)
+function D = f(Y, vars, consts, v_a, g_vals)
 
 % consts
 C = consts(1);
@@ -347,8 +359,8 @@ D = zeros(19, 1);
 Iall = iKv+iA+ih+iCa+iKCa+iL+Isyn;
 if nargin == 3
     D(1) = 1/C*(-Iall);
-elseif nargin == 4
-    D(1) = 1/C*(-Iall+0.2*(v_a-Y(1)));
+elseif nargin == 5
+    D(1) = 1/C*(-Iall+g_vals*(v_a-Y(1))');
 end
 D(2) = am_Kv*(1.0-Y(2))-bm_Kv*Y(2);
 D(3) = ah_Kv*(1.0-Y(3))-bh_Kv*Y(3);

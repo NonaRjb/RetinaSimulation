@@ -28,12 +28,14 @@ classdef ConePhotoReceptor < handle
         nu = 2.125;     % [sec^(-2)]
         K = 10;         % [sec]
         offset;
+        % gap_junction
+        g_vals
         % variables
         Y
     end
     
     methods
-        function obj = ConePhotoReceptor(Y0, buffer_size, dt, method, gap_junction)
+        function obj = ConePhotoReceptor(Y0, buffer_size, dt, method, gap_junction, g_vals)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
@@ -41,15 +43,24 @@ classdef ConePhotoReceptor < handle
                 dt = 1e-06;
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 2
                 dt = 1e-06;
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 3
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 4
                 gap_junction = 0;
+                g_vals = [];
+            elseif nargin == 5
+                if gap_junction == 1
+                    error('you need to provide electrical synapses conductance values')
+                end
+                g_vals = [];
             end
             
             obj.t = 1;
@@ -58,6 +69,7 @@ classdef ConePhotoReceptor < handle
             obj.flag = 0;
             obj.method = method;
             obj.gap_junction = gap_junction;
+            obj.g_vals = g_vals;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(10, buffer_size);
@@ -91,14 +103,14 @@ classdef ConePhotoReceptor < handle
             k21 = k12/obj.A;
 			
             consts = [obj.E; obj.tL; obj.tf; obj.alpha; obj.k23; obj.k32;...
-                obj.k34; obj.offset];
+                obj.k34];
             
             vars = [Gi; F; iC; k12; k21];
             
             if obj.gap_junction == 0
                 D = f(obj.Y(:,k), vars, consts);
             else
-                D = f(obj.Y(:,k), vars, consts, v_rod);
+                D = f(obj.Y(:,k), vars, consts, v_rod, obj.g_vals);
             end
             
             %%%% specify dt %%%%
@@ -192,7 +204,7 @@ end
 
 
 %%%% F %%%%
-function D = f(Y, vars, consts, v_rod)
+function D = f(Y, vars, consts, v_rod, g_vals)
 
 % consts
 E = consts(1);
@@ -202,7 +214,6 @@ alpha = consts(4);
 k23 = consts(5);
 k32 = consts(6);
 k34 = consts(7);
-offset = consts(8);
 
 % vars
 Gi = vars(1);
@@ -214,8 +225,8 @@ k21 = vars(5);
 D = zeros(10, 1);
 if nargin == 3
     D(1) = 1000*(E-Y(1)*(1+Y(2)+Gi))/tL;
-elseif nargin == 4
-    D(1) = 1000*(E-Y(1)*(1+Y(2)+Gi)+0.2*(v_rod-Y(1)))/tL;
+elseif nargin == 5
+    D(1) = 1000*(E-Y(1)*(1+Y(2)+Gi)+g_vals*(v_rod-Y(1))')/tL;
 end
 D(2) = 1000*(F-Y(2))/tf;
 D(3) = iC-alpha*Y(3);

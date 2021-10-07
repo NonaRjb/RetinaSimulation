@@ -27,12 +27,14 @@ classdef Amacrine < handle
         tau = 0.01;               % [ms] Time constant
         Vslope = 20;              % [mV] Voltage sensitivity of the synapse
         Vth = -36.424516776897130;% [mV]
+        % gap junction
+        g_vals
         % variables
         Y
     end
     
     methods
-        function obj = Amacrine(Y0, buffer_size, dt, method, gap_junction)
+        function obj = Amacrine(Y0, buffer_size, dt, method, gap_junction, g_vals)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
@@ -40,15 +42,24 @@ classdef Amacrine < handle
                 dt = 1e-06;
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 2
                 dt = 1e-06;
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 3
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 4
                 gap_junction = 0;
+                g_vals = [];
+            elseif nargin == 5
+                if gap_junction == 1
+                    error('you need to provide electrical synapses conductance values')
+                end
+                g_vals = [];
             end
             
             obj.t = 1;
@@ -57,6 +68,7 @@ classdef Amacrine < handle
             obj.flag = 0;
             obj.method = method;
             obj.gap_junction = gap_junction;
+            obj.g_vals = g_vals;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(5, buffer_size);
@@ -108,7 +120,7 @@ classdef Amacrine < handle
             if obj.gap_junction == 0
                 D = f(obj.Y(:,k), vars, consts);
             else
-                D = f(obj.Y(:,k), vars, consts, v_bip);
+                D = f(obj.Y(:,k), vars, consts, v_bip, obj.g_vals);
             end
             
             %%%% specify dt %%%%
@@ -252,7 +264,7 @@ bn_A = q10_A(temp_K)*0.125*exp(V/80);
 end
 
 %%%% F %%%%
-function D = f(Y, vars, consts, v_bip)
+function D = f(Y, vars, consts, v_bip, g_vals)
 
 % consts
 C = consts(1);
@@ -278,8 +290,8 @@ D = zeros(5, 1);
 Iall = iNa + iK + iL + Isyn;
 if nargin == 3
     D(1) = ((-Iall)/C)*tscale;
-elseif nargin == 4
-    D(1) = ((-Iall+0.2*(v_bip-Y(1)))/C)*tscale;
+elseif nargin == 5
+    D(1) = ((-Iall+g_vals*(v_bip-Y(1))')/C)*tscale;
 end
 D(2) = (m_inf_Na-Y(2))/tau_m_Na*tscale;
 D(3) = (h_inf_Na-Y(3))/tau_h_Na*tscale;

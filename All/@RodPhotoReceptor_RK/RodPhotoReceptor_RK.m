@@ -58,12 +58,14 @@ classdef RodPhotoReceptor_RK < handle
 		Amax = 65.6;            % [uMs^(-1)] Maximal activity of guanylate cyclase
 		sigma = 1.0;            % [s^(-1)uM^(-1)] Proportionality constant
 		jmax = 5040;            % [pA] Maximal cyclic GMP gated current inexcised patches
+        % gap junction
+        g_vals
 		% variables
         Y
     end
     
     methods
-        function obj = RodPhotoReceptor_RK(Y0, buffer_size, dt, method, gap_junction)
+        function obj = RodPhotoReceptor_RK(Y0, buffer_size, dt, method, gap_junction, g_vals)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
@@ -71,15 +73,24 @@ classdef RodPhotoReceptor_RK < handle
                 dt = 1e-06;
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 2
                 dt = 1e-06;
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 3 
                 method = 'euler';
                 gap_junction = 0;
+                g_vals = [];
             elseif nargin == 4
                 gap_junction = 0;
+                g_vals = [];
+            elseif nargin == 5 
+                if gap_junction == 1
+                    error('you need to provide electrical synapses conductance values')
+                end
+                g_vals = [];
             end
             
             obj.t = 1;
@@ -88,6 +99,7 @@ classdef RodPhotoReceptor_RK < handle
             obj.flag = 0;
             obj.method = method;
             obj.gap_junction = gap_junction;
+            obj.g_vals = g_vals;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(23, buffer_size);
@@ -104,7 +116,7 @@ classdef RodPhotoReceptor_RK < handle
         
         function [y, curr_t, c]  = solve(obj, jhv, v_cone)
             %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            %   v_cone should be a list with a minimum number of 1 element
 			
             if (obj.t+1 == obj.buffer_size) && (obj.flag == 1)
                 k = obj.t+1;
@@ -159,7 +171,7 @@ classdef RodPhotoReceptor_RK < handle
             if obj.gap_junction == 0
                 D = f(obj.Y(:,k), vars, consts);
             else
-                D = f(obj.Y(:,k), vars, consts, v_cone);
+                D = f(obj.Y(:,k), vars, consts, v_cone, obj.g_vals);
             end
             
             %%%% specify dt %%%%
@@ -259,7 +271,7 @@ end
 
 
 %%%% F %%%%
-function D = f(Y, vars, consts, v_cone)
+function D = f(Y, vars, consts, v_cone, g_vals)
 
 % consts
 Cm = consts(1);
@@ -323,8 +335,8 @@ D = zeros(23, 1);
 Iall = iKv+iCa+iCl+iKCa+ih+iL+iPhoto+iex+iex2;
 if nargin == 3
     D(1) = 1/Cm*(-Iall);
-elseif nargin == 4
-    D(1) = 1/Cm*(-Iall+0.2*(v_cone-Y(1)));
+elseif nargin == 5
+    D(1) = 1/Cm*(-Iall+g_vals*(v_cone-Y(1))');
 end
 D(2) = am_Kv*(1-Y(2))-bm_Kv*Y(2);
 D(3) = ah_Kv*(1-Y(3))-bh_Kv*Y(3);
