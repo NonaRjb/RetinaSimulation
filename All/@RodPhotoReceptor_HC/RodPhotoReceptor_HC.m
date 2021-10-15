@@ -9,6 +9,7 @@ classdef RodPhotoReceptor_HC < handle
         flag
         t_vec
         method
+        gap_junction
         % constants
 		Cm = 0.02;      % [nF]
 		gKv = 2.0;      % [nS]
@@ -57,23 +58,39 @@ classdef RodPhotoReceptor_HC < handle
 		Amax = 65.6;            % [uMs^(-1)] Maximal activity of guanylate cyclase
 		sigma = 1.0;            % [s^(-1)uM^(-1)] Proportionality constant
 		jmax = 5040;            % [pA] Maximal cyclic GMP gated current inexcised patches
-		% variables
+		% gap junction
+        g_vals
+        % variables
         Y
     end
     
     methods
-        function obj = RodPhotoReceptor_HC(Y0, buffer_size, dt, method)
+        function obj = RodPhotoReceptor_HC(Y0, buffer_size, dt, method, gap_junction, g_vals)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1
                 buffer_size = 10000;
                 dt = 1e-06;
                 method = 'euler';
+                gap_junction = 0;
+                g_vals = [];
             elseif nargin == 2
                 dt = 1e-06;
                 method = 'euler';
+                gap_junction = 0;
+                g_vals = [];
             elseif nargin == 3 
                 method = 'euler';
+                gap_junction = 0;
+                g_vals = [];
+            elseif nargin == 4
+                gap_junction = 0;
+                g_vals = [];
+            elseif nargin == 5
+                if gap_junction == 1
+                    error('you need to provide electrical synapses conductance values')
+                end
+                g_vals = [];
             end
             
             obj.t = 1;
@@ -81,6 +98,8 @@ classdef RodPhotoReceptor_HC < handle
             obj.buffer_size = buffer_size;
             obj.flag = 0;
             obj.method = method;
+            obj.gap_junction = gap_junction;
+            obj.g_vals = g_vals;
             
             obj.t_vec = zeros(buffer_size, 1); 
             obj.Y = zeros(23, buffer_size);
@@ -95,7 +114,7 @@ classdef RodPhotoReceptor_HC < handle
             end
 		end
         
-        function [y, curr_t, c]  = solve(obj, jhv, hc_feed)
+        function [y, curr_t, c]  = solve(obj, jhv, hc_feed, v_cone)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
 			
@@ -109,7 +128,7 @@ classdef RodPhotoReceptor_HC < handle
 			[am_Kv, bm_Kv, ah_Kv, bh_Kv] = Kv(obj.Y(1, k));
 			iKv = obj.gKv*obj.Y(2, k)^3*obj.Y(3, k)*(obj.Y(1,k)-obj.Ek);
 			%%% Ca %%%
-			Eca = -12.9*log(obj.Y(11, k)/obj.Ca0);%+70*hc_feed;
+			Eca = -12.9*log(obj.Y(11, k)/obj.Ca0); %+70*hc_feed;
 			[am_Ca, bm_Ca] = Ca(obj.Y(1, k), hc_feed);
 			hCa = exp((40-obj.Y(1, k))/18)/(1+exp((40-obj.Y(1, k))/18));
 			iCa = obj.gCa*obj.Y(4, k)^4*hCa*(obj.Y(1, k)-Eca);
@@ -144,7 +163,11 @@ classdef RodPhotoReceptor_HC < handle
                 am_Kv; bm_Kv; ah_Kv; bh_Kv; am_Ca; bm_Ca; am_KCa;...
                 bm_KCa; ah; bh; jhv; j];
             
-            D = f(obj.Y(:,k), vars, consts);
+            if obj.gap_junction == 0
+                D = f(obj.Y(:,k), vars, consts);
+            else
+                D = f(obj.Y(:,k), vars, consts, v_cone, obj.g_vals);
+            end
             
             %%%% specify dt %%%%
 %             
@@ -229,6 +252,10 @@ classdef RodPhotoReceptor_HC < handle
             cas = obj.Y(11, :);
         end
         
+        function mca = get_mCa(obj)
+            mca = obj.Y(4, :);
+        end
+        
         function tVector = get_tvec(obj)
             tVector = obj.t_vec;
         end
@@ -254,8 +281,9 @@ function [am_Ca, bm_Ca] = Ca(V, hc_feed)
 % bm_Ca = 10/(1+exp((V+38)/7));
 
 hc_feed = 2*hc_feed;
-am_Ca = 3*(80-V-hc_feed)/(exp((80-V-hc_feed)/25)-1); %+1.5*exp(-0.1*hc_feed);
-bm_Ca = 10/(1+exp((V+38+hc_feed)/7)); %-2*exp(-0.05*hc_feed);
+% am_Ca = 3*exp(-(80-V+hc_feed)/25)/(exp(-(80-V+hc_feed)/25)+1); %+1.5*exp(-0.1*hc_feed);
+am_Ca = 3*(80-V)/(exp((80-V-0.5*hc_feed)/25)-1)-0.3*hc_feed/(0.00001+hc_feed);
+bm_Ca = 10/(1+exp((V+38+2*hc_feed)/7))+0.3*hc_feed/(0.00001+hc_feed); %-2*exp(-0.05*hc_feed);
 
 
 end
@@ -280,7 +308,7 @@ end
 %%%%%%%%%%%%%%%%
 
 %%%% F %%%%
-function D = f(Y, vars, consts)
+function D = f(Y, vars, consts, v_cone, g_vals)
 
 % consts
 Cm = consts(1);
@@ -341,7 +369,12 @@ j = vars(21);
 
 
 D = zeros(23, 1);
-D(1) = 1/Cm*-(iKv+iCa+iCl+iKCa+ih+iL+iPhoto+iex+iex2);
+Iall = iKv+iCa+iCl+iKCa+ih+iL+iPhoto+iex+iex2;
+if nargin == 3
+    D(1) = 1/Cm*(-Iall);
+elseif nargin == 5
+    D(1) = 1/Cm*(-Iall+g_vals*(v_cone-Y(1))');
+end
 D(2) = am_Kv*(1-Y(2))-bm_Kv*Y(2);
 D(3) = ah_Kv*(1-Y(3))-bh_Kv*Y(3);
 D(4) = am_Ca*(1-Y(4))-bm_Ca*Y(4);

@@ -1,4 +1,6 @@
-classdef ConePhotoReceptor < handle
+classdef ConePhotoReceptor_HC < handle
+    %UNTITLED Summary of this class goes here
+    %   Detailed explanation goes here
     
     properties
         t
@@ -33,7 +35,7 @@ classdef ConePhotoReceptor < handle
     end
     
     methods
-        function obj = ConePhotoReceptor(Y0, buffer_size, dt, method, gap_junction, g_vals)
+        function obj = ConePhotoReceptor_HC(Y0, buffer_size, dt, method, gap_junction, g_vals)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if nargin==1

@@ -42,26 +42,20 @@ classdef Horizontal < handle
         kf = 0.1;       % [uM]
         bSB = 0.8;      % [1/uMs]
         fSB = 0.2;      % [1/uMs]
-        gSA = 1.5;      % [nS]
         C_S = 0.0125;   % [nF]
-        iAT = 6.48;     % [pA]
         tfb = 20;       % [sec^(-1)]
-        gs = 42.0;      % [nS]
-        gAT = 420;      % [nS]
-        C_AT = 0.00625; % [nF]
-        hAT = 0.17;     % [nS]
         V0 = 0;
         vr_flag = 0;
         Vrod0 = 0;
-        % GABA
-        GABA_i = 10;    % [mM]
-        Na_i = 13.54;   % [mM]
-        Na_o = 108;     % [mM]
-        Cl_i = 60;      % [mM]
-        Cl_o = 116;     % [mM]
-        n = 2;          % number of Na+ ions transported per GABA molecule
-        m = 1;          % number of Clions transported per GABA molecule
-        t_GABA = 65;    % [ms]
+%         % GABA
+%         GABA_i = 10;    % [mM]
+%         Na_i = 13.54;   % [mM]
+%         Na_o = 108;     % [mM]
+%         Cl_i = 60;      % [mM]
+%         Cl_o = 116;     % [mM]
+%         n = 2;          % number of Na+ ions transported per GABA molecule
+%         m = 1;          % number of Clions transported per GABA molecule
+%         t_GABA = 65;    % [ms]
         % variables
         Y
     end
@@ -117,9 +111,12 @@ classdef Horizontal < handle
             end
 			% explicit functions
             %%% glu %%%
-            % glu = 1/(1+exp(-Vpre+obj.alpha*obj.Y(10,k)));
+            %glu = 1/(1+exp(-(Vpre-obj.Vrod0)-obj.alpha*obj.Y(10,k)));
             %glu = exp((Vpre-(-36.185963)-obj.alpha*obj.Y(10,k)));
-            glu = 3*(10-exp((obj.Vrod0-Vpre)/10))/(10+exp(-(obj.Vrod0-Vpre)/50));
+            glu = 3*(10-exp((obj.Vrod0-Vpre)/(6*10)))/(10+exp(-(obj.Vrod0-Vpre)/(6*50)));
+            if glu < 0
+                glu = 0;
+            end
             % glu = ((Vpre+obj.alpha*obj.Y(10,k))/10);
 %             if (Vpre - obj.Y(10, k)) >= 0
 %                 glu = tanh((Vpre - obj.Y(10, k))/20);
@@ -179,8 +176,7 @@ classdef Horizontal < handle
             iL = obj.gl*(obj.Y(1, k)-obj.El);
 			
             consts = [obj.C_S; obj.Btot; obj.kb; obj.kf; obj.bSB;...
-                obj.fSB; obj.tfb; obj.V0; obj.GABA_i; obj.Na_i; obj.Cl_i;...
-                obj.Na_o; obj.Cl_o; obj.n; obj.m; obj.t_GABA; obj.R; obj.T; obj.F];
+                obj.fSB; obj.tfb; obj.V0];
             
             vars = [iCa; iA; iKa; iKv; iGlu; iL; iNa; amA; bmA; ahA; bhA; amKv;...
                 bmKv; amCa; bmCa; amNa; bmNa; ahNa; bhNa; kb1; kb2; dCain; dCaef];
@@ -290,17 +286,6 @@ bSB = consts(5);
 fSB = consts(6);
 tfb = consts(7);
 V0 = consts(8);
-GABA_i = consts(9);
-Na_i = consts(10);
-Cl_i = consts(11);
-Na_o = consts(12);
-Cl_o = consts(13);
-n = consts(14);
-m = consts(15);
-t_GABA = consts(16); 
-R = consts(17);
-T = consts(18);
-F = consts(19);
 
 % vars
 iCa = vars(1);
